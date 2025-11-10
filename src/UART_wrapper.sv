@@ -243,7 +243,7 @@ module UART_TX #(
             TXout       <= 1'b1;
             state       <= TX_IDLE;
             busy        <= 1'b0;
-            index       <= 1'b0;
+            index       <= '0;
             clkCount    <= 0;
             TXdone      <= 0;
         end
@@ -251,7 +251,7 @@ module UART_TX #(
             case (state)
                 TX_IDLE: begin
                     TXout       <= 1'b1;
-                    index       <= 1'b0;
+                    index       <= '0;
                     clkCount    <= 0;
                     TXdone      <= 0;
 
@@ -297,7 +297,7 @@ module UART_TX #(
                     state       <= TX_IDLE;
                     busy        <= 1'b0;
                     TXdone      <= 1'b1;
-                    index       <= 1'b0;
+                    index       <= '0;
                     clkCount    <= 0;
                 end
 

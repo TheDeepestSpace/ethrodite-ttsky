@@ -175,6 +175,7 @@ module ethernet_ipv4_handler #(
                 (`IPV4_DST_IP_OFFSET + 3): begin
                     ipv4_dst_ip_n[7:0] = s_axis_tdata;
                 end
+                default: ;
             endcase
 
             if (!odd_byte_valid_n) begin
@@ -243,6 +244,8 @@ module ethernet_ipv4_handler #(
                 else
                     state_n = S_CRC32;
         end
+
+        default: ;
         endcase
     end
     end
