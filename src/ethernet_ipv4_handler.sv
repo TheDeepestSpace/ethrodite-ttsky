@@ -128,6 +128,7 @@ module ethernet_ipv4_handler #(
                 ethertype_n[7:0] = s_axis_tdata;
                 ethertype_ok_n = (ethertype_n == `ETH_TYPE_IPV4);
             end
+            default: ;
         endcase
 
         // IPv4 header

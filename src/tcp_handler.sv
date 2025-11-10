@@ -109,6 +109,7 @@ module tcp_handler #(
                 (`TCP_WINDOW_SIZE_BASE + 1): window_size_n[7:0]  = s_axis_tdata;
                 (`TCP_URGENT_PTR_BASE + 0): urgent_n[15:8] = s_axis_tdata;
                 (`TCP_URGENT_PTR_BASE + 1): urgent_n[7:0]  = s_axis_tdata;
+                default: ;
             endcase
 
             // Accumulate header bytes
@@ -133,6 +134,7 @@ module tcp_handler #(
                     end
 
                 end
+                default: ;
             endcase
         end
     end
