@@ -59,7 +59,33 @@ module uart_tcp_mux #(
     input  logic                  app_response_axis_tlast
 );
 
-  // No internal interfaces needed - using flattened ports directly
+  // Internal signals for combinational logic
+  logic [DATA_WIDTH-1:0] instructions_to_brain_tdata_i;
+  logic                  instructions_to_brain_tvalid_i;
+  logic [DATA_WIDTH-1:0] eth_payload_tdata_i;
+  logic                  eth_payload_tvalid_i;
+  logic [DATA_WIDTH-1:0] payload_to_be_sent_tdata_i;
+  logic                  payload_to_be_sent_tvalid_i;
+  logic [DATA_WIDTH-1:0] uart_out_tdata_i;
+  logic                  uart_out_tvalid_i;
+  logic                  uart_in_tready_i;
+  logic                  rest_of_frame_tready_i;
+  logic                  eth_phy_tready_i;
+  logic                  app_response_tready_i;
+
+  // Connect internal signals to outputs
+  assign instructions_to_brain_axis_tdata = instructions_to_brain_tdata_i;
+  assign instructions_to_brain_axis_tvalid = instructions_to_brain_tvalid_i;
+  assign eth_payload_axis_tdata = eth_payload_tdata_i;
+  assign eth_payload_axis_tvalid = eth_payload_tvalid_i;
+  assign payload_to_be_sent_axis_tdata = payload_to_be_sent_tdata_i;
+  assign payload_to_be_sent_axis_tvalid = payload_to_be_sent_tvalid_i;
+  assign uart_out_tdata = uart_out_tdata_i;
+  assign uart_out_tvalid = uart_out_tvalid_i;
+  assign uart_in_tready = uart_in_tready_i;
+  assign rest_of_frame_axis_tready = rest_of_frame_tready_i;
+  assign eth_phy_axis_tready = eth_phy_tready_i;
+  assign app_response_axis_tready = app_response_tready_i;
 
   // Packet type constants
   localparam logic [7:0] PARROT = 8'd0;  // send back what we sent them
@@ -96,29 +122,29 @@ module uart_tcp_mux #(
 
   always_comb begin
     //all same data for UART --> REST OF CHIP
-    instructions_to_brain_axis_tdata = uart_rx_data;
-    eth_payload_axis_tdata = uart_rx_data;
-    payload_to_be_sent_axis_tdata = uart_rx_data;
-    uart_out_tdata = (state_r == S_SEND_HEADER) ? uart_header : uart_tx_data;
+    instructions_to_brain_tdata_i = uart_rx_data;
+    eth_payload_tdata_i = uart_rx_data;
+    payload_to_be_sent_tdata_i = uart_rx_data;
+    uart_out_tdata_i = (state_r == S_SEND_HEADER) ? uart_header : uart_tx_data;
 
     //valid if in outputting state
-    instructions_to_brain_axis_tvalid = (state_r == S_SEND_TO_BRAIN);
-    eth_payload_axis_tvalid = (state_r == S_SEND_TO_ETH);
-    payload_to_be_sent_axis_tvalid = (state_r == S_SEND_TO_TCP_SENDER);
-    uart_out_tvalid = (state_r == S_SEND_TO_UART || state_r == S_SEND_HEADER);
+    instructions_to_brain_tvalid_i = (state_r == S_SEND_TO_BRAIN);
+    eth_payload_tvalid_i = (state_r == S_SEND_TO_ETH);
+    payload_to_be_sent_tvalid_i = (state_r == S_SEND_TO_TCP_SENDER);
+    uart_out_tvalid_i = (state_r == S_SEND_TO_UART || state_r == S_SEND_HEADER);
 
     //valid if in polling state
-    uart_in_tready = (state_r == S_POLL_UART || state_r == S_GET_BYTE || state_r == S_GET_DATA);
-    rest_of_frame_axis_tready = (state_r == S_POLL_TCP_OUTPUT);
-    eth_phy_axis_tready = (state_r == S_POLL_FRAMES_OUT);
-    app_response_axis_tready = (state_r == S_POLL_BRAIN_STATUS);
-    
-    // tlast signals (not used in this simple mux)
-    instructions_to_brain_axis_tlast = 1'b0;
-    eth_payload_axis_tlast = 1'b0;
-    payload_to_be_sent_axis_tlast = 1'b0;
-    uart_out_tlast = 1'b0;
+    uart_in_tready_i = (state_r == S_POLL_UART || state_r == S_GET_BYTE || state_r == S_GET_DATA);
+    rest_of_frame_tready_i = (state_r == S_POLL_TCP_OUTPUT);
+    eth_phy_tready_i = (state_r == S_POLL_FRAMES_OUT);
+    app_response_tready_i = (state_r == S_POLL_BRAIN_STATUS);
   end
+  
+  // tlast signals (not used in this simple mux)
+  assign instructions_to_brain_axis_tlast = 1'b0;
+  assign eth_payload_axis_tlast = 1'b0;
+  assign payload_to_be_sent_axis_tlast = 1'b0;
+  assign uart_out_tlast = 1'b0;
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
