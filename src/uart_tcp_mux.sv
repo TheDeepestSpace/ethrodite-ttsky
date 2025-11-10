@@ -1,5 +1,5 @@
 // uart_tcp_mux.sv
-// `include "axi_stream_if.sv"
+`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
 
 module uart_tcp_mux #(

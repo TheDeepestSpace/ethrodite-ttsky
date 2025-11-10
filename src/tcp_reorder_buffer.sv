@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// `include "axi_stream_if.sv" // Assuming this is available
+`include "axi_stream_if.sv" // Assuming this is available
 // `include "ethernet_info.svh" // Assuming this is available
 
 module tcp_reorder_buffer #(
@@ -56,16 +56,16 @@ module tcp_reorder_buffer #(
     logic s_axis_is_writing;
     logic fsm_wants_to_clear;
     logic fsm_gets_port_a;
-    
+
     assign ack_out     = expected_seq_reg;
     assign window_size = DEPTH - used_bytes;
-    
+
     // s_axis.tready is now independent of the output FSM,
     // because arbitration handles any Port A conflicts.
     assign s_axis.tready = base_defined && (prev_seq == seq_start);
 
     assign s_axis_is_writing  = s_axis.tvalid && s_axis.tready;
-        
+
     always_ff @(posedge clk, negedge rst_n) begin
         if (!rst_n) begin
             write_addr       <= '0;
@@ -92,7 +92,7 @@ module tcp_reorder_buffer #(
                 reset_index <= reset_index + 1;
                 if (reset_index == PACKET_DEPTH-1)
                     reset_done <= 1'b1;
-            
+
             end else if (base_valid) begin
                 // --- New Base Sequence ---
                 base_seq_reg     <= seq_base;
@@ -108,15 +108,15 @@ module tcp_reorder_buffer #(
                 write_addr <= (write_addr + 1) % PACKET_DEPTH;
                 if (write_addr == (read_raddr+1) % PACKET_DEPTH)
                     read_data_reg <= {7'b0, s_axis.tdata, 1'b1};
-                else 
-                    read_data_reg <= combined_mem[read_raddr+1]; 
+                else
+                    read_data_reg <= combined_mem[read_raddr+1];
                 used_bytes <= used_bytes+1;
                 combined_mem[write_addr] <= {7'b0, s_axis.tdata, 1'b1};
                 state_r <= S_READ;
             end else if (state_r == S_READ) begin
-                read_data_reg  <= combined_mem[read_raddr]; 
+                read_data_reg  <= combined_mem[read_raddr];
                 state_r <= S_SEND;
-            end 
+            end
             else if (read_data_reg[VALID_BIT_IDX]) begin
                 m_axis.tvalid <= 1;
                 m_axis.tdata  <= read_data_reg[DATA_MSB_IDX:DATA_LSB_IDX];

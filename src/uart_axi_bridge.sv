@@ -1,5 +1,5 @@
 // uart_axi_bridge.sv
-// `include "axi_stream_if.sv"
+`include "axi_stream_if.sv"
 // `include "UART_wrapper.sv"
 
 module uart_axi_bridge #(

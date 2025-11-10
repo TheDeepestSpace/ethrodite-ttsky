@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// `include "axi_stream_if.sv"
+`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
 
 module tcp_top(
