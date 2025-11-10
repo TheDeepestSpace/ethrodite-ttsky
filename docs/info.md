@@ -9,12 +9,12 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
+This project is a TCP stack that takes in frames and instructions from UART and outputs the remaining network layers over UART.
 
 ## How to test
 
-Explain how to use your project
+Send in ethernet frames over uart, and see what comes back
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+Obviously we have the UART that comes with this tiny tapeout, alongside that a CPU with access to ethernet and UART would be needed.
