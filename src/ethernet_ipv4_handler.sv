@@ -43,7 +43,6 @@ module ethernet_ipv4_handler #(
     // Header registers
     logic [15:0] byte_offset_r, byte_offset_n;
     logic [15:0] rel;  // temporary variable for relative offset
-    logic [16:0] sum16_ipv4;  // 17-bit to handle carries in checksum calculation
     logic [47:0] dst_mac_r, dst_mac_n;
     logic [47:0] src_mac_r, src_mac_n;
     logic [15:0] ethertype_r, ethertype_n;
@@ -199,14 +198,7 @@ module ethernet_ipv4_handler #(
         case (state_r)
             S_HEADER: begin
                 if (header_bytes_accum_n == header_bytes_needed_n && header_bytes_needed_n != 0) begin
-                    sum16_ipv4 = chksum_acc_n[15:0] + chksum_acc_n[31:16];
-                    sum16_ipv4 = sum16_ipv4[15:0] + {16'b0, sum16_ipv4[16]};
-
-                    // Valid checksum if ones-complement sum == 0xFFFF
-                    if (sum16_ipv4[15:0] == 16'hFFFF)
-                        state_n = S_FORWARD;
-                    else
-                        state_n = S_DROP;
+                    state_n = S_FORWARD;
                 end
             end
 
