@@ -8,7 +8,7 @@ project:
   clock_hz:    50000000      # 50 MHz clock
 
   # How many tiles your design occupies?
-  tiles: " 2x2"
+  tiles: "4x4"
 
   # Your top module name must start with "tt_um_".
   top_module:  "tt_um_top" # <-- MUST start with tt_um_
