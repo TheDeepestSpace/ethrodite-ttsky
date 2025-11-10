@@ -44,6 +44,6 @@ interface axi_stream_if #(
         output tready
     );
 
-endinterface : axi_stream_if
+endinterface
 
 `endif // AXI_STREAM_IF_SV
