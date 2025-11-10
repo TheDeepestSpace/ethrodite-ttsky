@@ -15,7 +15,6 @@ project:
 
   # List ALL project's source files here.
   source_files:
-    - "final_top.sv"          # <-- ADDED
     - "uart_axi_bridge.sv"    # <-- ADDED
     - "axi_stream_if.sv"
     - "crc32.sv"
