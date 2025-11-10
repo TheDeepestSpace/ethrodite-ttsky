@@ -1,5 +1,4 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
 // `include "tcp_top.sv"
 // `include "uart_tcp_mux.sv"
 
@@ -11,23 +10,67 @@ module uart_top #(
     input  logic clk,
     input  logic rst_n,
 
-    // Physical UART interface
-    axi_stream_if.slave uart_in,
-    axi_stream_if.master uart_out
+    // Physical UART interface - slave (input from UART)
+    input  logic [DATA_WIDTH-1:0] uart_in_tdata,
+    input  logic                  uart_in_tvalid,
+    output logic                  uart_in_tready,
+    input  logic                  uart_in_tlast,
+    
+    // Physical UART interface - master (output to UART)
+    output logic [DATA_WIDTH-1:0] uart_out_tdata,
+    output logic                  uart_out_tvalid,
+    input  logic                  uart_out_tready,
+    output logic                  uart_out_tlast
 );
 
     // -------------------------------
-    // Internal AXI Stream interfaces
+    // Internal AXI Stream signals
     // -------------------------------
-    axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) instruction_if();
-    axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) response_if();
-    axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) output_if();
-    axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) phy_if();
-    axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) payload_if();
-    axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) app_data_if();
+    // instruction interface (mux -> brain)
+    logic [DATA_WIDTH-1:0] instruction_tdata;
+    logic                  instruction_tvalid;
+    logic                  instruction_tready;
+    logic                  instruction_tlast;
+    
+    // response interface (brain -> mux)
+    logic [DATA_WIDTH-1:0] response_tdata;
+    logic                  response_tvalid;
+    logic                  response_tready;
+    logic                  response_tlast;
+    
+    // output interface (tcp -> mux)
+    logic [DATA_WIDTH-1:0] output_tdata;
+    logic                  output_tvalid;
+    logic                  output_tready;
+    logic                  output_tlast;
+    
+    // phy interface (tcp -> mux)
+    logic [DATA_WIDTH-1:0] phy_tdata;
+    logic                  phy_tvalid;
+    logic                  phy_tready;
+    logic                  phy_tlast;
+    
+    // payload interface (mux -> tcp)
+    logic [DATA_WIDTH-1:0] payload_tdata;
+    logic                  payload_tvalid;
+    logic                  payload_tready;
+    logic                  payload_tlast;
+    
+    // app_data interface (mux -> tcp)
+    logic [DATA_WIDTH-1:0] app_data_tdata;
+    logic                  app_data_tvalid;
+    logic                  app_data_tready;
+    logic                  app_data_tlast;
 
-    // TCP connection info (configured via UART commands)
-    tcp_command_info conn_info;
+    // TCP connection info (configured via UART commands) - flattened for Yosys compatibility
+    logic [47:0] conn_info_src_mac;
+    logic [47:0] conn_info_dst_mac;
+    logic [31:0] conn_info_src_ip;
+    logic [31:0] conn_info_dst_ip;
+    logic [15:0] conn_info_src_port;
+    logic [15:0] conn_info_dst_port;
+    logic [15:0] conn_info_payload_len;
+    logic [15:0] conn_info_tcp_checksum;
 
     // -------------------------------
     // TCP stack instantiation
@@ -35,13 +78,38 @@ module uart_top #(
     tcp_top u_tcp_top (
         .clk(clk),
         .rst_n(rst_n),
-        .instruction_axis(instruction_if.slave),
-        .response_axis(response_if.master),
-        .phy_axis(phy_if.master),          // TX frames to UART mux
-        .s_payload_axis(payload_if.slave), // RX frames from UART mux
-        .output_axis(output_if.master),    // Processed TCP data
-        .s_app_axis(app_data_if.slave),    // App data to send
-        .in_info(conn_info)
+        .instruction_axis_tdata (instruction_tdata),
+        .instruction_axis_tvalid(instruction_tvalid),
+        .instruction_axis_tready(instruction_tready),
+        .instruction_axis_tlast (instruction_tlast),
+        .response_axis_tdata    (response_tdata),
+        .response_axis_tvalid   (response_tvalid),
+        .response_axis_tready   (response_tready),
+        .response_axis_tlast    (response_tlast),
+        .phy_axis_tdata         (phy_tdata),
+        .phy_axis_tvalid        (phy_tvalid),
+        .phy_axis_tready        (phy_tready),
+        .phy_axis_tlast         (phy_tlast),
+        .s_payload_axis_tdata   (payload_tdata),
+        .s_payload_axis_tvalid  (payload_tvalid),
+        .s_payload_axis_tready  (payload_tready),
+        .s_payload_axis_tlast   (payload_tlast),
+        .output_axis_tdata      (output_tdata),
+        .output_axis_tvalid     (output_tvalid),
+        .output_axis_tready     (output_tready),
+        .output_axis_tlast      (output_tlast),
+        .s_app_axis_tdata       (app_data_tdata),
+        .s_app_axis_tvalid      (app_data_tvalid),
+        .s_app_axis_tready      (app_data_tready),
+        .s_app_axis_tlast       (app_data_tlast),
+        .in_info_src_mac        (conn_info_src_mac),
+        .in_info_dst_mac        (conn_info_dst_mac),
+        .in_info_src_ip         (conn_info_src_ip),
+        .in_info_dst_ip         (conn_info_dst_ip),
+        .in_info_src_port       (conn_info_src_port),
+        .in_info_dst_port       (conn_info_dst_port),
+        .in_info_payload_len    (conn_info_payload_len),
+        .in_info_tcp_checksum   (conn_info_tcp_checksum)
     );
 
     // -------------------------------
@@ -53,22 +121,53 @@ module uart_top #(
         .clk(clk),
         .rst_n(rst_n),
 
-        // Physical UART
-        .uart_in(uart_in),
+        // Physical UART input
+        .uart_in_tdata (uart_in_tdata),
+        .uart_in_tvalid(uart_in_tvalid),
+        .uart_in_tready(uart_in_tready),
+        .uart_in_tlast (uart_in_tlast),
 
         // UART commands driving TCP stack
-        .instructions_to_brain_axis(instruction_if.master),
-        .eth_payload_axis(payload_if.master),
-        .payload_to_be_sent_axis(app_data_if.master),
-        .out_info(conn_info),
+        .instructions_to_brain_axis_tdata (instruction_tdata),
+        .instructions_to_brain_axis_tvalid(instruction_tvalid),
+        .instructions_to_brain_axis_tready(instruction_tready),
+        .instructions_to_brain_axis_tlast (instruction_tlast),
+        .eth_payload_axis_tdata           (payload_tdata),
+        .eth_payload_axis_tvalid          (payload_tvalid),
+        .eth_payload_axis_tready          (payload_tready),
+        .eth_payload_axis_tlast           (payload_tlast),
+        .payload_to_be_sent_axis_tdata    (app_data_tdata),
+        .payload_to_be_sent_axis_tvalid   (app_data_tvalid),
+        .payload_to_be_sent_axis_tready   (app_data_tready),
+        .payload_to_be_sent_axis_tlast    (app_data_tlast),
+        .out_info_src_mac                 (conn_info_src_mac),
+        .out_info_dst_mac                 (conn_info_dst_mac),
+        .out_info_src_ip                  (conn_info_src_ip),
+        .out_info_dst_ip                  (conn_info_dst_ip),
+        .out_info_src_port                (conn_info_src_port),
+        .out_info_dst_port                (conn_info_dst_port),
+        .out_info_payload_len             (conn_info_payload_len),
+        .out_info_tcp_checksum            (conn_info_tcp_checksum),
 
         // UART output back to physical UART
-        .uart_out(uart_out),
+        .uart_out_tdata (uart_out_tdata),
+        .uart_out_tvalid(uart_out_tvalid),
+        .uart_out_tready(uart_out_tready),
+        .uart_out_tlast (uart_out_tlast),
 
         // Outputs from TCP stack going back to UART
-        .rest_of_frame_axis(output_if.slave),
-        .eth_phy_axis(phy_if.slave),
-        .app_response_axis(response_if.slave)
+        .rest_of_frame_axis_tdata (output_tdata),
+        .rest_of_frame_axis_tvalid(output_tvalid),
+        .rest_of_frame_axis_tready(output_tready),
+        .rest_of_frame_axis_tlast (output_tlast),
+        .eth_phy_axis_tdata       (phy_tdata),
+        .eth_phy_axis_tvalid      (phy_tvalid),
+        .eth_phy_axis_tready      (phy_tready),
+        .eth_phy_axis_tlast       (phy_tlast),
+        .app_response_axis_tdata  (response_tdata),
+        .app_response_axis_tvalid (response_tvalid),
+        .app_response_axis_tready (response_tready),
+        .app_response_axis_tlast  (response_tlast)
     );
 
 endmodule

@@ -1,6 +1,4 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv" // Assuming this is available
-// `include "ethernet_info.svh" // Assuming this is available
 
 module tcp_reorder_buffer #(
     parameter int DATA_WIDTH = 8, // Per your comment, 8-bit data
@@ -10,11 +8,17 @@ module tcp_reorder_buffer #(
     input  logic clk,
     input  logic rst_n,
 
-    // Incoming AXI4-Stream (from TCP RX engine)
-    axi_stream_if.slave s_axis,
+    // Incoming AXI4-Stream (from TCP RX engine) - slave
+    input  logic [DATA_WIDTH-1:0] s_axis_tdata,
+    input  logic                  s_axis_tvalid,
+    output logic                  s_axis_tready,
+    input  logic                  s_axis_tlast,
 
-    // Outgoing AXI4-Stream (to upper layer)
-    axi_stream_if.master m_axis,
+    // Outgoing AXI4-Stream (to upper layer) - master
+    output logic [DATA_WIDTH-1:0] m_axis_tdata,
+    output logic                  m_axis_tvalid,
+    input  logic                  m_axis_tready,
+    output logic                  m_axis_tlast,
 
     // Sequence tracking
     input  logic [SEQ_BITS-1:0] seq_base,   // starting seq# of the base (anchor)
@@ -49,8 +53,9 @@ module tcp_reorder_buffer #(
     logic                 reset_done;
     logic [15:0]          read_data_reg; // Holds data from Port B
 
-    typedef enum logic [0:0] {S_READ, S_SEND} state_e;
-    state_e state_r;
+    localparam S_READ = 1'b0;
+    localparam S_SEND = 1'b1;
+    logic state_r;
 
     // ---------- Combinatorial Logic ----------
     logic s_axis_is_writing;
@@ -60,11 +65,11 @@ module tcp_reorder_buffer #(
     assign ack_out     = expected_seq_reg;
     assign window_size = DEPTH - used_bytes;
 
-    // s_axis.tready is now independent of the output FSM,
+    // s_axis_tready is now independent of the output FSM,
     // because arbitration handles any Port A conflicts.
-    assign s_axis.tready = base_defined && (prev_seq == seq_start);
+    assign s_axis_tready = base_defined && (prev_seq == seq_start);
 
-    assign s_axis_is_writing  = s_axis.tvalid && s_axis.tready;
+    assign s_axis_is_writing  = s_axis_tvalid && s_axis_tready;
 
     always_ff @(posedge clk, negedge rst_n) begin
         if (!rst_n) begin
@@ -77,13 +82,14 @@ module tcp_reorder_buffer #(
             expected_seq_reg <= '0;
             ack_done         <= 1'b0;
             read_data_reg    <= '0;
-            m_axis.tvalid    <= 1'b0;
-            m_axis.tdata     <= '0;
+            m_axis_tvalid    <= 1'b0;
+            m_axis_tdata     <= '0;
+            m_axis_tlast     <= 1'b0;
             state_r <= S_READ;
         end
         else begin
             // --- Default non-stalling behavior ---
-            m_axis.tvalid <= 1'b0;
+            m_axis_tvalid <= 1'b0;
             ack_done      <= 1'b0;
 
             if (!reset_done) begin
@@ -98,7 +104,7 @@ module tcp_reorder_buffer #(
                 base_seq_reg     <= seq_base;
                 base_defined     <= 1;
                 expected_seq_reg <= seq_base;
-                m_axis.tvalid    <= 0;
+                m_axis_tvalid    <= 0;
                 read_raddr       <= '0;
                 ack_done         <= 0;
             end else if (seq_start != prev_seq) begin
@@ -107,19 +113,19 @@ module tcp_reorder_buffer #(
             end else if (s_axis_is_writing) begin
                 write_addr <= (write_addr + 1) % PACKET_DEPTH;
                 if (write_addr == (read_raddr+1) % PACKET_DEPTH)
-                    read_data_reg <= {7'b0, s_axis.tdata, 1'b1};
+                    read_data_reg <= {7'b0, s_axis_tdata, 1'b1};
                 else
                     read_data_reg <= combined_mem[read_raddr+1];
                 used_bytes <= used_bytes+1;
-                combined_mem[write_addr] <= {7'b0, s_axis.tdata, 1'b1};
+                combined_mem[write_addr] <= {7'b0, s_axis_tdata, 1'b1};
                 state_r <= S_READ;
             end else if (state_r == S_READ) begin
                 read_data_reg  <= combined_mem[read_raddr];
                 state_r <= S_SEND;
             end
             else if (read_data_reg[VALID_BIT_IDX]) begin
-                m_axis.tvalid <= 1;
-                m_axis.tdata  <= read_data_reg[DATA_MSB_IDX:DATA_LSB_IDX];
+                m_axis_tvalid <= 1;
+                m_axis_tdata  <= read_data_reg[DATA_MSB_IDX:DATA_LSB_IDX];
                 expected_seq_reg <= expected_seq_reg + 1;
                 state_r <= S_READ;
                 combined_mem[read_raddr] <= '0;

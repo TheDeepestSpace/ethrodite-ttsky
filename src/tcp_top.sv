@@ -1,5 +1,4 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
 
 module tcp_top(
@@ -7,38 +6,84 @@ module tcp_top(
     input  logic rst_n,
 
     // AXI4-Stream slave (commands from App)
-    axi_stream_if.slave instruction_axis,
+    input  logic [7:0] instruction_axis_tdata,
+    input  logic       instruction_axis_tvalid,
+    output logic       instruction_axis_tready,
+    input  logic       instruction_axis_tlast,
 
     // output to rest of FPGA (reordered, to application/upper layer)
-    axi_stream_if.master output_axis,
+    output logic [7:0] output_axis_tdata,
+    output logic       output_axis_tvalid,
+    input  logic       output_axis_tready,
+    output logic       output_axis_tlast,
 
     // output to PHY (frames to be transmitted)
-    axi_stream_if.master phy_axis,
+    output logic [7:0] phy_axis_tdata,
+    output logic       phy_axis_tvalid,
+    input  logic       phy_axis_tready,
+    output logic       phy_axis_tlast,
 
     // AXI4-Stream master (to App - notifications / responses)
-    axi_stream_if.master response_axis,
+    output logic [7:0] response_axis_tdata,
+    output logic       response_axis_tvalid,
+    input  logic       response_axis_tready,
+    output logic       response_axis_tlast,
 
     // AXI4-Stream slave (incoming payload from PHY)
-    axi_stream_if.slave s_payload_axis,
+    input  logic [7:0] s_payload_axis_tdata,
+    input  logic       s_payload_axis_tvalid,
+    output logic       s_payload_axis_tready,
+    input  logic       s_payload_axis_tlast,
 
     // AXI4-Stream slave (outgoing payload from App to be sent)
-    axi_stream_if.slave s_app_axis,
+    input  logic [7:0] s_app_axis_tdata,
+    input  logic       s_app_axis_tvalid,
+    output logic       s_app_axis_tready,
+    input  logic       s_app_axis_tlast,
 
-    // Connection info (latched on instruction)
-    input  tcp_command_info     in_info
+    // Connection info (latched on instruction) - flattened for Yosys compatibility
+    input  logic [47:0] in_info_src_mac,
+    input  logic [47:0] in_info_dst_mac,
+    input  logic [31:0] in_info_src_ip,
+    input  logic [31:0] in_info_dst_ip,
+    input  logic [15:0] in_info_src_port,
+    input  logic [15:0] in_info_dst_port,
+    input  logic [15:0] in_info_payload_len,
+    input  logic [15:0] in_info_tcp_checksum
 );
 
     // -----------------
-    // Internal interfaces (interconnect between submodules)
+    // Internal signals (interconnect between submodules)
     // -----------------
-    axi_stream_if tcp_payload_if(); // ethernet -> tcp_handler
-    axi_stream_if final_payload_if(); // tcp_handler -> reorder buffer
+    // ethernet -> tcp_handler
+    logic [7:0] tcp_payload_tdata;
+    logic       tcp_payload_tvalid;
+    logic       tcp_payload_tready;
+    logic       tcp_payload_tlast;
+    
+    // tcp_handler -> reorder buffer
+    logic [7:0] final_payload_tdata;
+    logic       final_payload_tvalid;
+    logic       final_payload_tready;
+    logic       final_payload_tlast;
 
     // -----------------
     // Control / metadata signals
     // -----------------
     logic                 sender_start;
-    tcp_packet_info_s     sender_info; // type defined in tcp_sender.sv
+    // Flattened sender_info for Yosys compatibility
+    logic [47:0] sender_info_src_mac;
+    logic [47:0] sender_info_dst_mac;
+    logic [31:0] sender_info_src_ip;
+    logic [31:0] sender_info_dst_ip;
+    logic [15:0] sender_info_src_port;
+    logic [15:0] sender_info_dst_port;
+    logic [31:0] sender_info_seq_num;
+    logic [31:0] sender_info_ack_num;
+    logic [7:0]  sender_info_tcp_flags;
+    logic [15:0] sender_info_window;
+    logic [15:0] sender_info_payload_len;
+    logic [15:0] sender_info_tcp_checksum;
     logic                 sender_busy;
 
     // window/sequence tracking (from tcp_brain)
@@ -93,12 +138,36 @@ module tcp_top(
     tcp_brain u_tcp_brain (
         .clk             (clk),
         .rst_n           (rst_n),
-        .instruction_axis(instruction_axis),
-        .response_axis   (response_axis),
-        .sender_start    (sender_start),
-        .sender_info     (sender_info),
-        .sender_busy     (sender_busy),
-        .in_info         (in_info),
+        .instruction_axis_tdata (instruction_axis_tdata),
+        .instruction_axis_tvalid(instruction_axis_tvalid),
+        .instruction_axis_tready(instruction_axis_tready),
+        .instruction_axis_tlast (instruction_axis_tlast),
+        .response_axis_tdata    (response_axis_tdata),
+        .response_axis_tvalid   (response_axis_tvalid),
+        .response_axis_tready   (response_axis_tready),
+        .response_axis_tlast    (response_axis_tlast),
+        .sender_start            (sender_start),
+        .sender_info_src_mac     (sender_info_src_mac),
+        .sender_info_dst_mac     (sender_info_dst_mac),
+        .sender_info_src_ip      (sender_info_src_ip),
+        .sender_info_dst_ip      (sender_info_dst_ip),
+        .sender_info_src_port    (sender_info_src_port),
+        .sender_info_dst_port    (sender_info_dst_port),
+        .sender_info_seq_num     (sender_info_seq_num),
+        .sender_info_ack_num     (sender_info_ack_num),
+        .sender_info_tcp_flags   (sender_info_tcp_flags),
+        .sender_info_window      (sender_info_window),
+        .sender_info_payload_len (sender_info_payload_len),
+        .sender_info_tcp_checksum(sender_info_tcp_checksum),
+        .sender_busy             (sender_busy),
+        .in_info_src_mac    (in_info_src_mac),
+        .in_info_dst_mac    (in_info_dst_mac),
+        .in_info_src_ip     (in_info_src_ip),
+        .in_info_dst_ip     (in_info_dst_ip),
+        .in_info_src_port   (in_info_src_port),
+        .in_info_dst_port   (in_info_dst_port),
+        .in_info_payload_len(in_info_payload_len),
+        .in_info_tcp_checksum(in_info_tcp_checksum),
         .window_size     (window_size),
         .expected_ack    (expected_ack),
         .ack_done        (ack_done),
@@ -117,8 +186,14 @@ module tcp_top(
     ethernet_ipv4_handler u_eth_ipv4 (
         .clk               (clk),
         .rst_n             (rst_n),
-        .s_axis            (s_payload_axis),
-        .m_axis            (tcp_payload_if),
+        .s_axis_tdata      (s_payload_axis_tdata),
+        .s_axis_tvalid     (s_payload_axis_tvalid),
+        .s_axis_tready     (s_payload_axis_tready),
+        .s_axis_tlast      (s_payload_axis_tlast),
+        .m_axis_tdata      (tcp_payload_tdata),
+        .m_axis_tvalid     (tcp_payload_tvalid),
+        .m_axis_tready     (tcp_payload_tready),
+        .m_axis_tlast      (tcp_payload_tlast),
         .meta_valid        (eth_meta_valid),
         .meta_ready        (tcp_meta_ready),     // backpressure from brain
         .meta_dst_mac      (eth_meta_dst_mac),
@@ -134,8 +209,14 @@ module tcp_top(
     tcp_handler u_tcp_handler (
         .clk                (clk),
         .rst_n              (rst_n),
-        .s_axis             (tcp_payload_if),
-        .m_axis             (final_payload_if),
+        .s_axis_tdata       (tcp_payload_tdata),
+        .s_axis_tvalid      (tcp_payload_tvalid),
+        .s_axis_tready      (tcp_payload_tready),
+        .s_axis_tlast       (tcp_payload_tlast),
+        .m_axis_tdata       (final_payload_tdata),
+        .m_axis_tvalid      (final_payload_tvalid),
+        .m_axis_tready      (final_payload_tready),
+        .m_axis_tlast       (final_payload_tlast),
         .meta_valid         (tcp_meta_valid),
         .meta_ready         (tcp_meta_ready),
         .meta_src_port      (tcp_meta_src_port),
@@ -152,9 +233,26 @@ module tcp_top(
         .clk   (clk),
         .rst_n (rst_n),
         .start (sender_start),
-        .i_pkt (sender_info),
-        .s_axis(s_app_axis),   // payload source from application
-        .m_axis(phy_axis),     // output to PHY
+        .i_pkt_src_mac     (sender_info_src_mac),
+        .i_pkt_dst_mac     (sender_info_dst_mac),
+        .i_pkt_src_ip      (sender_info_src_ip),
+        .i_pkt_dst_ip      (sender_info_dst_ip),
+        .i_pkt_src_port    (sender_info_src_port),
+        .i_pkt_dst_port    (sender_info_dst_port),
+        .i_pkt_seq_num     (sender_info_seq_num),
+        .i_pkt_ack_num     (sender_info_ack_num),
+        .i_pkt_tcp_flags   (sender_info_tcp_flags),
+        .i_pkt_window      (sender_info_window),
+        .i_pkt_payload_len (sender_info_payload_len),
+        .i_pkt_tcp_checksum(sender_info_tcp_checksum),
+        .s_axis_tdata (s_app_axis_tdata),
+        .s_axis_tvalid(s_app_axis_tvalid),
+        .s_axis_tready(s_app_axis_tready),
+        .s_axis_tlast (s_app_axis_tlast),
+        .m_axis_tdata (phy_axis_tdata),
+        .m_axis_tvalid(phy_axis_tvalid),
+        .m_axis_tready(phy_axis_tready),
+        .m_axis_tlast (phy_axis_tlast),
         .busy  (sender_busy)
     );
 
@@ -162,8 +260,14 @@ module tcp_top(
     tcp_reorder_buffer u_reorder (
         .clk        (clk),
         .rst_n      (rst_n),
-        .s_axis     (final_payload_if),
-        .m_axis     (output_axis),
+        .s_axis_tdata (final_payload_tdata),
+        .s_axis_tvalid(final_payload_tvalid),
+        .s_axis_tready(final_payload_tready),
+        .s_axis_tlast (final_payload_tlast),
+        .m_axis_tdata (output_axis_tdata),
+        .m_axis_tvalid(output_axis_tvalid),
+        .m_axis_tready(output_axis_tready),
+        .m_axis_tlast (output_axis_tlast),
         .seq_base   (seq_base),
         .base_valid (base_valid),
         .seq_start  (seq_start),

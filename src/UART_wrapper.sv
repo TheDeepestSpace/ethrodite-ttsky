@@ -101,57 +101,54 @@ module UART_RX #(
 
 
 
-    typedef enum logic [1:0] {
-        IDLE,
-        START,
-        RECEIVE,
-        DONE
-    } 
-    state_t;
+    localparam RX_IDLE    = 2'd0;
+    localparam RX_START   = 2'd1;
+    localparam RX_RECEIVE = 2'd2;
+    localparam RX_DONE    = 2'd3;
 
-    state_t state;
+    logic [1:0] state;
 
     always_ff @(posedge clk) begin
         if (rst) begin
             dataOut <= 0;
-            state <= IDLE;
+            state <= RX_IDLE;
             index <= 1'b0;
             clkCount <= 0;
             dataDone <= 0;
         end
         else begin
             case (state)
-                IDLE: begin
+                RX_IDLE: begin
                     clkCount <= 0;
                     index <= 0;
                     dataOut <= 0;
                     dataDone <= 0;
 
                     if (regIn == 1'b0) begin    // Start Condition
-                        state <= START;
+                        state <= RX_START;
                     end
                     else begin
-                        state <= IDLE;
+                        state <= RX_IDLE;
                     end
                 end
 
-                START: begin
+                RX_START: begin
                     if (clkCount == ((clk_per_bit - 1) >> 1)) begin
                         clkCount <= 0;
-                        state <= RECEIVE;
+                        state <= RX_RECEIVE;
                     end
                     else begin
                         clkCount <= clkCount + 1;
-                        state <= START;
+                        state <= RX_START;
                     end
 
                 end
 
-                RECEIVE: begin
+                RX_RECEIVE: begin
 
                     if (clkCount < clk_per_bit - 1) begin
                         clkCount <= clkCount + 1;
-                        state <= RECEIVE;
+                        state <= RX_RECEIVE;
                     end
 
                     else begin
@@ -159,26 +156,26 @@ module UART_RX #(
                         if (index < DATA_WIDTH) begin
                             dataOut[index] <= regIn;
                             index <= index + 1;
-                            state <= RECEIVE;
+                            state <= RX_RECEIVE;
                         end
                         else if (index == DATA_WIDTH && PARITY_BITS > 0) begin
                             parity <= regIn;
-                            state <= DONE;
+                            state <= RX_DONE;
                         end
                         else begin
-                            state <= DONE;
+                            state <= RX_DONE;
                         end
                     end
                 end
 
-                DONE: begin
+                RX_DONE: begin
                     if (clkCount < clk_per_bit - 1) begin
                         clkCount <= clkCount + 1;
-                        state <= DONE;
+                        state <= RX_DONE;
                     end
                     else begin
                         clkCount <= 0;
-                        state <= IDLE;
+                        state <= RX_IDLE;
                         dataDone <= 1'b1;
                         index <= 0;
                         RXout <= dataOut;
@@ -186,7 +183,7 @@ module UART_RX #(
                 end
 
                 default: begin
-                    state <= IDLE;
+                    state <= RX_IDLE;
                 end
                 
             endcase
@@ -231,14 +228,11 @@ module UART_TX #(
     logic   [indexBits - 1 : 0]         index;
     logic   [CLK_BITS - 1 : 0]          clkCount;
 
-    typedef enum logic [1:0] {
-        IDLE,
-        TRANSMIT,
-        DONE
-    } 
-    state_t;
+    localparam TX_IDLE     = 2'd0;
+    localparam TX_TRANSMIT = 2'd1;
+    localparam TX_DONE     = 2'd2;
 
-    state_t state;
+    logic [1:0] state;
 
     always_comb begin
         parityBit = ^dataIn;    // 0 for even number of 1's, 1 for odd number of 1's
@@ -247,7 +241,7 @@ module UART_TX #(
     always_ff @(posedge clk) begin
         if (rst) begin
             TXout       <= 1'b1;
-            state       <= IDLE;
+            state       <= TX_IDLE;
             busy        <= 1'b0;
             index       <= 1'b0;
             clkCount    <= 0;
@@ -255,7 +249,7 @@ module UART_TX #(
         end
         else begin
             case (state)
-                IDLE: begin
+                TX_IDLE: begin
                     TXout       <= 1'b1;
                     index       <= 1'b0;
                     clkCount    <= 0;
@@ -272,35 +266,35 @@ module UART_TX #(
                         //                |                         |
                         //              Stop                      Start
                         busy <= 1'b1;
-                        state <= TRANSMIT;
+                        state <= TX_TRANSMIT;
                     end
                     else begin
-                        state <= IDLE;
+                        state <= TX_IDLE;
                     end
                 end
 
-                TRANSMIT: begin
+                TX_TRANSMIT: begin
                     TXout <= packet[index];
 
                     if (clkCount < clk_per_bit - 1) begin
                         clkCount <= clkCount + 1;
-                        state <= TRANSMIT;
+                        state <= TX_TRANSMIT;
                     end
 
                     else begin
                         clkCount <= 0;
                         if (index == PACKET_SIZE - 1) begin
-                            state <= DONE;
+                            state <= TX_DONE;
                         end
                         else begin
                             index <= index + 1;
-                            state <= TRANSMIT;
+                            state <= TX_TRANSMIT;
                         end
                     end
                 end
 
-                DONE: begin
-                    state       <= IDLE;
+                TX_DONE: begin
+                    state       <= TX_IDLE;
                     busy        <= 1'b0;
                     TXdone      <= 1'b1;
                     index       <= 1'b0;
@@ -308,7 +302,7 @@ module UART_TX #(
                 end
 
                 default: begin
-                    state <= IDLE;
+                    state <= TX_IDLE;
                 end
             endcase
         end 

@@ -8,10 +8,16 @@ module tcp_handler #(
     input  logic rst_n,
 
     // AXI4-Stream slave
-    axi_stream_if.slave s_axis,
+    input  logic [DATA_WIDTH-1:0] s_axis_tdata,
+    input  logic                  s_axis_tvalid,
+    output logic                  s_axis_tready,
+    input  logic                  s_axis_tlast,
 
     // AXI4-Stream master (forwarded payload)
-    axi_stream_if.master m_axis,
+    output logic [DATA_WIDTH-1:0] m_axis_tdata,
+    output logic                  m_axis_tvalid,
+    input  logic                  m_axis_tready,
+    output logic                  m_axis_tlast,
 
     // Metadata outputs
     output logic       meta_valid,
@@ -25,8 +31,10 @@ module tcp_handler #(
     output logic [15:0] meta_payload_len
 );
 
-    typedef enum logic [1:0] {S_HEADER, S_FORWARD, S_WAIT} state_e;
-    state_e state_r, state_n;
+    localparam S_HEADER  = 2'd0;
+    localparam S_FORWARD = 2'd1;
+    localparam S_WAIT    = 2'd2;
+    logic [1:0] state_r, state_n;
 
     // Header registers
     logic [15:0] byte_offset_r, byte_offset_n;
@@ -52,8 +60,8 @@ module tcp_handler #(
     // AXI4 forwarding
     logic [DATA_WIDTH-1:0] m_axis_data_n;
     logic m_axis_last_n, m_axis_valid_n;
-    assign s_axis.tready = 1; //add a fifo here
-    //assign m_axis.tlast  = s_axis.tlast;
+    assign s_axis_tready = 1; //add a fifo here
+    //assign m_axis_tlast  = s_axis_tlast;
 
     // we need this as soon as we get it, so it is assigned like this
     assign meta_seq_num = seq_num_n;
@@ -77,30 +85,30 @@ module tcp_handler #(
         header_bytes_needed_n  = header_bytes_needed_r;
         header_bytes_accum_n   = header_bytes_accum_r;
         forwarded_bytes_n      = forwarded_bytes_r;
-        m_axis_data_n          = s_axis.tdata;
-        m_axis_last_n          = s_axis.tlast;
+        m_axis_data_n          = s_axis_tdata;
+        m_axis_last_n          = s_axis_tlast;
         m_axis_valid_n         = 0;
-        if (s_axis.tvalid) begin
+        if (s_axis_tvalid) begin
             // --- same case statement / header accumulation / checksum ---
             case (byte_offset_r)
-                (`TCP_SRC_PORT_BASE + 0): src_port_n[15:8] = s_axis.tdata;
-                (`TCP_SRC_PORT_BASE + 1): src_port_n[7:0]  = s_axis.tdata;
-                (`TCP_DST_PORT_BASE + 0): dst_port_n[15:8] = s_axis.tdata;
-                (`TCP_DST_PORT_BASE + 1): dst_port_n[7:0]  = s_axis.tdata;
-                (`TCP_SEQ_NUM_BASE + 0): seq_num_n[31:24]  = s_axis.tdata;
-                (`TCP_SEQ_NUM_BASE + 1): seq_num_n[23:16]  = s_axis.tdata;
-                (`TCP_SEQ_NUM_BASE + 2): seq_num_n[15:8]   = s_axis.tdata;
-                (`TCP_SEQ_NUM_BASE + 3): seq_num_n[7:0]    = s_axis.tdata;
-                (`TCP_ACK_NUM_BASE + 0): ack_num_n[31:24]  = s_axis.tdata;
-                (`TCP_ACK_NUM_BASE + 1): ack_num_n[23:16]  = s_axis.tdata;
-                (`TCP_ACK_NUM_BASE + 2): ack_num_n[15:8]   = s_axis.tdata;
-                (`TCP_ACK_NUM_BASE + 3): ack_num_n[7:0]    = s_axis.tdata;
-                (`TCP_DATA_OFFSET_BASE): header_bytes_needed_n = s_axis.tdata[7:4]*4;
-                (`TCP_FLAGS_BASE): flags_n = s_axis.tdata;
-                (`TCP_WINDOW_SIZE_BASE + 0): window_size_n[15:8] = s_axis.tdata;
-                (`TCP_WINDOW_SIZE_BASE + 1): window_size_n[7:0]  = s_axis.tdata;
-                (`TCP_URGENT_PTR_BASE + 0): urgent_n[15:8] = s_axis.tdata;
-                (`TCP_URGENT_PTR_BASE + 1): urgent_n[7:0]  = s_axis.tdata;
+                (`TCP_SRC_PORT_BASE + 0): src_port_n[15:8] = s_axis_tdata;
+                (`TCP_SRC_PORT_BASE + 1): src_port_n[7:0]  = s_axis_tdata;
+                (`TCP_DST_PORT_BASE + 0): dst_port_n[15:8] = s_axis_tdata;
+                (`TCP_DST_PORT_BASE + 1): dst_port_n[7:0]  = s_axis_tdata;
+                (`TCP_SEQ_NUM_BASE + 0): seq_num_n[31:24]  = s_axis_tdata;
+                (`TCP_SEQ_NUM_BASE + 1): seq_num_n[23:16]  = s_axis_tdata;
+                (`TCP_SEQ_NUM_BASE + 2): seq_num_n[15:8]   = s_axis_tdata;
+                (`TCP_SEQ_NUM_BASE + 3): seq_num_n[7:0]    = s_axis_tdata;
+                (`TCP_ACK_NUM_BASE + 0): ack_num_n[31:24]  = s_axis_tdata;
+                (`TCP_ACK_NUM_BASE + 1): ack_num_n[23:16]  = s_axis_tdata;
+                (`TCP_ACK_NUM_BASE + 2): ack_num_n[15:8]   = s_axis_tdata;
+                (`TCP_ACK_NUM_BASE + 3): ack_num_n[7:0]    = s_axis_tdata;
+                (`TCP_DATA_OFFSET_BASE): header_bytes_needed_n = s_axis_tdata[7:4]*4;
+                (`TCP_FLAGS_BASE): flags_n = s_axis_tdata;
+                (`TCP_WINDOW_SIZE_BASE + 0): window_size_n[15:8] = s_axis_tdata;
+                (`TCP_WINDOW_SIZE_BASE + 1): window_size_n[7:0]  = s_axis_tdata;
+                (`TCP_URGENT_PTR_BASE + 0): urgent_n[15:8] = s_axis_tdata;
+                (`TCP_URGENT_PTR_BASE + 1): urgent_n[7:0]  = s_axis_tdata;
             endcase
 
             // Accumulate header bytes
@@ -111,7 +119,7 @@ module tcp_handler #(
                 S_HEADER: begin
                     if (header_bytes_accum_n >= header_bytes_needed_n && header_bytes_needed_n != 0) begin
                         // Move to forward state
-                        state_n = (s_axis.tlast) ? S_WAIT : S_FORWARD;
+                        state_n = (s_axis_tlast) ? S_WAIT : S_FORWARD;
                     end
                 end
                 S_FORWARD: begin
@@ -119,7 +127,7 @@ module tcp_handler #(
                     forwarded_bytes_n = forwarded_bytes_n + 1;
                     m_axis_valid_n         = 1;
 
-                    if (s_axis.tlast && s_axis.tvalid) begin
+                    if (s_axis_tlast && s_axis_tvalid) begin
                         state_n = S_WAIT;
                         m_axis_last_n = 1;
                     end
@@ -168,9 +176,9 @@ module tcp_handler #(
             seq_num_r <= seq_num_n; ack_num_r <= ack_num_n; flags_r <= flags_n; window_size_r <= window_size_n;
             forwarded_bytes_r <= forwarded_bytes_n;
 
-            m_axis.tdata <= m_axis_data_n;
-            m_axis.tvalid <= m_axis_valid_n;
-            m_axis.tlast  <= m_axis_last_n;
+            m_axis_tdata <= m_axis_data_n;
+            m_axis_tvalid <= m_axis_valid_n;
+            m_axis_tlast  <= m_axis_last_n;
 
             // ---------------------------
             // Metadata latching
@@ -182,7 +190,7 @@ module tcp_handler #(
                 meta_flags         <= flags_n;
                 meta_window_size   <= window_size_n;
             end
-            else if (s_axis.tlast && s_axis.tvalid) begin
+            else if (s_axis_tlast && s_axis_tvalid) begin
                 // checksum calculation
                 meta_valid <= 1;
                 meta_payload_len <= forwarded_bytes_n;

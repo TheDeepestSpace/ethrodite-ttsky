@@ -10,18 +10,43 @@ module tcp_brain #(
     input  logic rst_n,
 
     // AXI4-Stream slave (commands from App)
-    axi_stream_if.slave instruction_axis,
+    input  logic [DATA_WIDTH-1:0] instruction_axis_tdata,
+    input  logic                  instruction_axis_tvalid,
+    output logic                  instruction_axis_tready,
+    input  logic                  instruction_axis_tlast,
 
     // AXI4-Stream master (to App - data RECEIVED)
-    axi_stream_if.master response_axis,
+    output logic [DATA_WIDTH-1:0] response_axis_tdata,
+    output logic                  response_axis_tvalid,
+    input  logic                  response_axis_tready,
+    output logic                  response_axis_tlast,
 
     // TCP sender interface
     output logic               sender_start,
-    output tcp_packet_info_s   sender_info,
+    // Flattened sender_info for Yosys compatibility
+    output logic [47:0] sender_info_src_mac,
+    output logic [47:0] sender_info_dst_mac,
+    output logic [31:0] sender_info_src_ip,
+    output logic [31:0] sender_info_dst_ip,
+    output logic [15:0] sender_info_src_port,
+    output logic [15:0] sender_info_dst_port,
+    output logic [31:0] sender_info_seq_num,
+    output logic [31:0] sender_info_ack_num,
+    output logic [7:0]  sender_info_tcp_flags,
+    output logic [15:0] sender_info_window,
+    output logic [15:0] sender_info_payload_len,
+    output logic [15:0] sender_info_tcp_checksum,
     input  logic               sender_busy,
 
-    // Connection info (latched on instruction)
-    input  tcp_command_info     in_info,
+    // Connection info (latched on instruction) - flattened for Yosys compatibility
+    input  logic [47:0] in_info_src_mac,
+    input  logic [47:0] in_info_dst_mac,
+    input  logic [31:0] in_info_src_ip,
+    input  logic [31:0] in_info_dst_ip,
+    input  logic [15:0] in_info_src_port,
+    input  logic [15:0] in_info_dst_port,
+    input  logic [15:0] in_info_payload_len,
+    input  logic [15:0] in_info_tcp_checksum,
 
     input  logic [31:0]         window_size,  // remaining byte space
     input  logic [31:0]         expected_ack,
@@ -45,11 +70,11 @@ module tcp_brain #(
     localparam MAX_FAILED_ATTEMPS = 3;
 
     // --- Application Command Opcodes ---
-    localparam logic [INSTRUCTION_WIDTH-1:0] CMD_CONNECT = 8'h01;
-    localparam logic [INSTRUCTION_WIDTH-1:0] CMD_CLOSE   = 8'h02;
-    localparam logic [INSTRUCTION_WIDTH-1:0] CMD_SEND    = 8'h03;
+    localparam CMD_CONNECT = 8'h01;
+    localparam CMD_CLOSE   = 8'h02;
+    localparam CMD_SEND    = 8'h03;
 
-    state_e state_r, state_n;
+    logic [3:0] state_r, state_n;
 
     // --- TCP State Variables ---
     logic [31:0] client_seq_num;    // Our *next* sequence number to send
@@ -76,41 +101,53 @@ module tcp_brain #(
             timer             <= 0;
             num_attempts      <= 0;
             send_dup_ack      <= 0;
-            instruction_axis.tready <= 0;
+            instruction_axis_tready <= 0;
         end else begin
 
             // --- Default Assignments (prevent latches/multi-drivers) ---
             state_r                 <= state_r;
             sender_start            <= 0;
-            instruction_axis.tready <= 0;
+            instruction_axis_tready <= 0;
             send_dup_ack            <= 0;
             meta_ready              <= 0;
 
             // This is the packet info we will send *if* sender_start is high
-            // It latches the previous value by default.
-            sender_info             <= sender_info;
+            // It latches the previous value by default (flattened for Yosys)
+            sender_info_src_mac      <= sender_info_src_mac;
+            sender_info_dst_mac      <= sender_info_dst_mac;
+            sender_info_src_ip       <= sender_info_src_ip;
+            sender_info_dst_ip       <= sender_info_dst_ip;
+            sender_info_src_port     <= sender_info_src_port;
+            sender_info_dst_port     <= sender_info_dst_port;
+            sender_info_seq_num      <= sender_info_seq_num;
+            sender_info_ack_num      <= sender_info_ack_num;
+            sender_info_tcp_flags    <= sender_info_tcp_flags;
+            sender_info_window       <= sender_info_window;
+            sender_info_payload_len  <= sender_info_payload_len;
+            sender_info_tcp_checksum <= sender_info_tcp_checksum;
+            
             case(state_r)
                 //-----------------------------------------
                 S_CLOSED: begin
                     // Ready to accept a "connect" command
-                    instruction_axis.tready <= 1;
+                    instruction_axis_tready <= 1;
 
-                    if (instruction_axis.tvalid && instruction_axis.tdata == CMD_CONNECT) begin
+                    if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CONNECT) begin
                         // Latch connection info and ISN
-                        sender_info.src_mac <= in_info.src_mac;
-                        sender_info.dst_mac <= in_info.dst_mac;
-                        sender_info.src_port <= in_info.src_port;
-                        sender_info.dst_port <= in_info.dst_port;
-                        sender_info.src_ip   <= in_info.src_ip;
-                        sender_info.dst_ip   <= in_info.dst_ip;
-                        sender_info.window   <= window_size[15:0]; // Our receive window
+                        sender_info_src_mac  <= in_info_src_mac;
+                        sender_info_dst_mac  <= in_info_dst_mac;
+                        sender_info_src_port <= in_info_src_port;
+                        sender_info_dst_port <= in_info_dst_port;
+                        sender_info_src_ip   <= in_info_src_ip;
+                        sender_info_dst_ip   <= in_info_dst_ip;
+                        sender_info_window   <= window_size[15:0]; // Our receive window
 
                         // Prepare SYN packet fields and schedule a one-cycle prepare
                         client_seq_num <= client_isn + 1; // Set our starting sequence number (SYN consumes one seq)
-                        sender_info.seq_num    <= client_isn;
-                        sender_info.ack_num    <= 0;
-                        sender_info.tcp_flags  <= (1<<`TCP_FLAG_SYN);
-                        sender_info.payload_len <= 0;
+                        sender_info_seq_num      <= client_isn;
+                        sender_info_ack_num      <= 0;
+                        sender_info_tcp_flags    <= (1<<`TCP_FLAG_SYN);
+                        sender_info_payload_len  <= 0;
 
                         state_n   <= S_SYN_SENT;
                         state_r         <= S_PREPARE_SEND;
@@ -123,7 +160,7 @@ module tcp_brain #(
                 S_PREPARE_SEND: begin
                     // Pulse sender_start for one cycle, then go wait-for-sender
                     sender_start <= 1;
-                    sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                    sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
 
                     // don't accept metadata while initiating send
                     base_valid <= 0;
@@ -136,17 +173,17 @@ module tcp_brain #(
                     // Wait for the tcp_sender module to finish sending the packet
                     if (!sender_busy) begin
                         state_r <= S_NOTIFY_FPGA; // Go to the state we saved
-                        response_axis.tvalid <= 1;
-                        response_axis.tdata  <= {4'b0, state_n}; // Indicate packet sent
-                        response_axis.tlast  <= 1;
+                        response_axis_tvalid <= 1;
+                        response_axis_tdata  <= {4'b0, state_n}; // Indicate packet sent
+                        response_axis_tlast  <= 1;
                         sender_start         <= 0;
                     end
                     base_valid <= 0;
                 end
 
                 S_NOTIFY_FPGA: begin
-                    if (response_axis.tready) begin
-                        response_axis.tvalid <= 0;
+                    if (response_axis_tready) begin
+                        response_axis_tvalid <= 0;
                         state_r <= state_n;
                     end
                 end
@@ -177,14 +214,14 @@ module tcp_brain #(
                             // and server_seq_num are updated in this same
                             // sequential block (non-blocking), so reading the
                             // registers would return old values in this cycle.
-                            sender_info.seq_num    <= meta_ack_num;            // our updated next seq
-                            sender_info.ack_num    <= (meta_seq_num + 1);     // acknowledge their SYN
-                            sender_info.tcp_flags  <= 1<<`TCP_FLAG_ACK;
-                            sender_info.payload_len <= 0;
+                            sender_info_seq_num    <= meta_ack_num;            // our updated next seq
+                            sender_info_ack_num    <= (meta_seq_num + 1);     // acknowledge their SYN
+                            sender_info_tcp_flags  <= 1<<`TCP_FLAG_ACK;
+                            sender_info_payload_len <= 0;
 
                             // move to prepare-send so sender_info is stable when pulsed
                             state_n <= S_ESTABLISHED;
-                            sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                            sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                             state_r      <= S_PREPARE_SEND;
                         end
                     end
@@ -210,7 +247,7 @@ module tcp_brain #(
                     // Ready for data from App *if* sender is free
 
                     // Ready for "close" command
-                    instruction_axis.tready <= 1;
+                    instruction_axis_tready <= 1;
                     meta_ready<= 0;
 
                     if (meta_valid&~meta_ready) begin
@@ -224,13 +261,13 @@ module tcp_brain #(
                             server_seq_num <= meta_seq_num + 1; // FIN counts as 1 byte
 
                             // Send ACK for their FIN
-                            sender_info.seq_num    <= client_seq_num;
-                            sender_info.ack_num    <= server_seq_num;
-                            sender_info.tcp_flags  <= 1<<`TCP_FLAG_ACK;
-                            sender_info.payload_len <= 0;
+                            sender_info_seq_num    <= client_seq_num;
+                            sender_info_ack_num    <= server_seq_num;
+                            sender_info_tcp_flags  <= 1<<`TCP_FLAG_ACK;
+                            sender_info_payload_len <= 0;
 
                             state_n <= S_CLOSE_WAIT;
-                            sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                            sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                             state_r      <= S_PREPARE_SEND;
                         end
                         else begin
@@ -258,48 +295,48 @@ module tcp_brain #(
                             end
                         end // end else (data/ack)
                     end // end if(meta_valid)
-                    else if (instruction_axis.tvalid && instruction_axis.tdata == CMD_SEND) begin
+                    else if (instruction_axis_tvalid && instruction_axis_tdata == CMD_SEND) begin
                         // --- Priority 2: Handle Outgoing Data from App ---
                         // (Assuming sender module will read from s_axis based on payload_len)
                         // (This assumes we know the length *before* sending)
-                        // (This logic assumes `in_info.payload_len` is updated by the app)
+                        // (This logic assumes `in_info_payload_len` is updated by the app)
 
-                        sender_info.seq_num    <= client_seq_num;
-                        sender_info.ack_num    <= server_seq_num; // Piggyback ACK
-                        sender_info.tcp_flags  <= (1<<`TCP_FLAG_ACK) | (1<<`TCP_FLAG_PSH);
-                        sender_info.payload_len <= in_info.payload_len;
+                        sender_info_seq_num    <= client_seq_num;
+                        sender_info_ack_num    <= server_seq_num; // Piggyback ACK
+                        sender_info_tcp_flags  <= (1<<`TCP_FLAG_ACK) | (1<<`TCP_FLAG_PSH);
+                        sender_info_payload_len <= in_info_payload_len;
 
-                        client_seq_num <= client_seq_num + {16'b0, in_info.payload_len};
+                        client_seq_num <= client_seq_num + {16'b0, in_info_payload_len};
 
                         // prepare send so sender_info is stable for one cycle
                         state_n <= S_ESTABLISHED;
-                        sender_info.tcp_checksum <= in_info.tcp_checksum; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= in_info_tcp_checksum; // No payload, checksum not needed
                         state_r <= S_PREPARE_SEND;
                     end
-                    else if (instruction_axis.tvalid && instruction_axis.tdata == CMD_CLOSE) begin
+                    else if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CLOSE) begin
                         // --- Priority 3: Handle Active Close (App wants to close) ---
-                        sender_info.seq_num    <= client_seq_num;
-                        sender_info.ack_num    <= server_seq_num;
-                        sender_info.tcp_flags  <= (1<<`TCP_FLAG_FIN) | (1<<`TCP_FLAG_ACK);
-                        sender_info.payload_len <= 0;
+                        sender_info_seq_num    <= client_seq_num;
+                        sender_info_ack_num    <= server_seq_num;
+                        sender_info_tcp_flags  <= (1<<`TCP_FLAG_FIN) | (1<<`TCP_FLAG_ACK);
+                        sender_info_payload_len <= 0;
 
                         client_seq_num <= client_seq_num + 1; // FIN counts as 1 byte
 
                         state_n <= S_FIN_WAIT_1;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                         state_r      <= S_PREPARE_SEND;
                         timer        <= TIMEOUT;
                     end
 
                     else if (send_dup_ack) begin
                         // --- Priority 4: Send Duplicate ACK ---
-                        sender_info.seq_num    <= client_seq_num;
-                        sender_info.ack_num    <= server_seq_num; // Send *expected* number cfb45248
-                        sender_info.tcp_flags  <= 1<<`TCP_FLAG_ACK;
-                        sender_info.payload_len <= 0;
+                        sender_info_seq_num    <= client_seq_num;
+                        sender_info_ack_num    <= server_seq_num; // Send *expected* number cfb45248
+                        sender_info_tcp_flags  <= 1<<`TCP_FLAG_ACK;
+                        sender_info_payload_len <= 0;
 
                         state_n <= S_ESTABLISHED;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                         state_r      <= S_PREPARE_SEND;
                     end
                 end // end S_ESTABLISHED
@@ -310,13 +347,13 @@ module tcp_brain #(
 
                         // Send ACK (or piggyback on next data packet)
                         // For simplicity, we send an ACK immediately.
-                        sender_info.seq_num    <= client_seq_num;
-                        sender_info.ack_num    <= expected_ack;
-                        sender_info.tcp_flags  <= 1<<`TCP_FLAG_ACK;
-                        sender_info.payload_len <= 0;
+                        sender_info_seq_num    <= client_seq_num;
+                        sender_info_ack_num    <= expected_ack;
+                        sender_info_tcp_flags  <= 1<<`TCP_FLAG_ACK;
+                        sender_info_payload_len <= 0;
 
                         state_n <= S_ESTABLISHED;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                         state_r  <= S_PREPARE_SEND;
                     end
                 end
@@ -326,19 +363,19 @@ module tcp_brain #(
                 S_CLOSE_WAIT: begin
                     // Server sent FIN, we ACKed.
                     // We now wait for our *own* application to be ready to close.
-                    instruction_axis.tready <= 1;
+                    instruction_axis_tready <= 1;
 
-                    if (instruction_axis.tvalid && instruction_axis.tdata == CMD_CLOSE) begin
+                    if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CLOSE) begin
                         // App is done. Send our FIN.
-                        sender_info.seq_num    <= client_seq_num;
-                        sender_info.ack_num    <= server_seq_num;
-                        sender_info.tcp_flags  <= (1<<`TCP_FLAG_FIN )|( 1<<`TCP_FLAG_ACK);
-                        sender_info.payload_len <= 0;
+                        sender_info_seq_num    <= client_seq_num;
+                        sender_info_ack_num    <= server_seq_num;
+                        sender_info_tcp_flags  <= (1<<`TCP_FLAG_FIN )|( 1<<`TCP_FLAG_ACK);
+                        sender_info_payload_len <= 0;
 
                         client_seq_num <= client_seq_num + 1; // FIN counts as 1 byte
 
                         state_n <= S_LAST_ACK;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                         state_r      <= S_PREPARE_SEND;
                         timer        <= TIMEOUT;
                         num_attempts <= 0;
@@ -362,7 +399,7 @@ module tcp_brain #(
                         num_attempts <= num_attempts + 1;
                         // resend FIN: ensure sender_info is stable before pulsing
                         state_n <= S_LAST_ACK;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                         timer        <= TIMEOUT;
                         state_r      <= S_PREPARE_SEND;
                     end
@@ -385,13 +422,13 @@ module tcp_brain #(
                                 // --- Simultaneous Close ---
                                 server_seq_num <= meta_seq_num + 1;
                                 // Send ACK for their FIN
-                                sender_info.seq_num    <= client_seq_num;
-                                sender_info.ack_num    <= server_seq_num;
-                                sender_info.tcp_flags  <= `TCP_FLAG_ACK;
-                                sender_info.payload_len <= 0;
+                                sender_info_seq_num    <= client_seq_num;
+                                sender_info_ack_num    <= server_seq_num;
+                                sender_info_tcp_flags  <= `TCP_FLAG_ACK;
+                                sender_info_payload_len <= 0;
 
                                 sender_start <= 1;
-                                sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                                sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                                 state_r      <= S_WAITING_TO_SEND;
                                 state_n      <= S_TIME_WAIT;
                                 timer        <= TIME_WAIT_TIMEOUT;
@@ -411,7 +448,7 @@ module tcp_brain #(
                         // (Assuming num_attempts logic, omitted for brevity)
                         // resend FIN: ensure sender_info is stable before pulsing
                         state_n <= S_FIN_WAIT_1;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                         timer        <= TIMEOUT;
                         state_r      <= S_PREPARE_SEND;
                     end
@@ -426,13 +463,13 @@ module tcp_brain #(
                         server_seq_num <= meta_seq_num + 1;
 
                         // Send ACK for their FIN
-                        sender_info.seq_num    <= client_seq_num;
-                        sender_info.ack_num    <= server_seq_num;
-                        sender_info.tcp_flags  <= `TCP_FLAG_ACK;
-                        sender_info.payload_len <= 0;
+                        sender_info_seq_num    <= client_seq_num;
+                        sender_info_ack_num    <= server_seq_num;
+                        sender_info_tcp_flags  <= `TCP_FLAG_ACK;
+                        sender_info_payload_len <= 0;
 
                         state_n <= S_TIME_WAIT;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                        sender_info_tcp_checksum <= 16'h0000; // No payload, checksum not needed
                         state_r      <= S_PREPARE_SEND;
                         timer        <= TIME_WAIT_TIMEOUT; // Start 2*MSL timer
                     end

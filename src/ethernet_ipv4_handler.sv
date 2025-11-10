@@ -8,10 +8,16 @@ module ethernet_ipv4_handler #(
     input  logic rst_n,
 
     // AXI4-Stream slave
-    axi_stream_if.slave s_axis,
+    input  logic [DATA_WIDTH-1:0] s_axis_tdata,
+    input  logic                  s_axis_tvalid,
+    output logic                  s_axis_tready,
+    input  logic                  s_axis_tlast,
 
     // AXI4-Stream master (forwarded payload)
-    axi_stream_if.master m_axis,
+    output logic [DATA_WIDTH-1:0] m_axis_tdata,
+    output logic                  m_axis_tvalid,
+    input  logic                  m_axis_tready,
+    output logic                  m_axis_tlast,
 
     // Metadata outputs
     output logic       meta_valid,
@@ -27,8 +33,12 @@ module ethernet_ipv4_handler #(
 
     localparam [15:0] ETH_HEADER_BYTES = 14;
 
-    typedef enum logic [3:0] {S_HEADER, S_FORWARD, S_CRC32, S_WAIT, S_DROP} state_e;
-    state_e state_r, state_n;
+    localparam S_HEADER  = 4'd0;
+    localparam S_FORWARD = 4'd1;
+    localparam S_CRC32   = 4'd2;
+    localparam S_WAIT    = 4'd3;
+    localparam S_DROP    = 4'd4;
+    logic [3:0] state_r, state_n;
 
     // Header registers
     logic [15:0] byte_offset_r, byte_offset_n;
@@ -63,11 +73,11 @@ module ethernet_ipv4_handler #(
 
     // -----------------------------------------------------------------
     // AXI4 forwarding
-    assign m_axis.tdata  = m_axis_tdata_r;
-    assign m_axis.tlast  = m_axis_tlast_r;
+    assign m_axis_tdata  = m_axis_tdata_r;
+    assign m_axis_tlast  = m_axis_tlast_r;
     // are set inside the combinational block to avoid latches/glitches.
-    assign s_axis.tready = state_r != S_WAIT;
-    assign m_axis.tvalid = m_axis_tvalid_r;
+    assign s_axis_tready = state_r != S_WAIT;
+    assign m_axis_tvalid = m_axis_tvalid_r;
 
     // -----------------------------------------------------------------
     // Combinational next-state
@@ -75,6 +85,7 @@ module ethernet_ipv4_handler #(
         // Defaults
         state_n = state_r;
         byte_offset_n = byte_offset_r;
+        rel = '0;  // Default to avoid latch inference
         dst_mac_n = dst_mac_r; src_mac_n = src_mac_r;
         ethertype_n = ethertype_r; ethertype_ok_n = ethertype_ok_r;
         ipv4_version_n = ipv4_version_r; ipv4_ihl_n = ipv4_ihl_r;
@@ -92,29 +103,29 @@ module ethernet_ipv4_handler #(
     m_axis_tlast_n = 1'b0;
     // By default mirror the incoming data into the next registered
     // output so tdata is stable for the cycle when observed.
-    m_axis_tdata_n = s_axis.tdata;
+    m_axis_tdata_n = s_axis_tdata;
     // Default registered valid is deasserted; combinational logic will
     // set m_axis_tvalid_n when forwarding.
     m_axis_tvalid_n = 1'b0;
 
-    if (s_axis.tvalid) begin
+    if (s_axis_tvalid) begin
         // Ethernet header
         case (byte_offset_r)
-            (`ETH_DST_MAC_BASE + 0): dst_mac_n[47:40] = s_axis.tdata;
-            (`ETH_DST_MAC_BASE + 1): dst_mac_n[39:32] = s_axis.tdata;
-            (`ETH_DST_MAC_BASE + 2): dst_mac_n[31:24] = s_axis.tdata;
-            (`ETH_DST_MAC_BASE + 3): dst_mac_n[23:16] = s_axis.tdata;
-            (`ETH_DST_MAC_BASE + 4): dst_mac_n[15:8]  = s_axis.tdata;
-            (`ETH_DST_MAC_BASE + 5): dst_mac_n[7:0]   = s_axis.tdata;
-            (`ETH_SRC_MAC_BASE + 0): src_mac_n[47:40] = s_axis.tdata;
-            (`ETH_SRC_MAC_BASE + 1): src_mac_n[39:32] = s_axis.tdata;
-            (`ETH_SRC_MAC_BASE + 2): src_mac_n[31:24] = s_axis.tdata;
-            (`ETH_SRC_MAC_BASE + 3): src_mac_n[23:16] = s_axis.tdata;
-            (`ETH_SRC_MAC_BASE + 4): src_mac_n[15:8]  = s_axis.tdata;
-            (`ETH_SRC_MAC_BASE + 5): src_mac_n[7:0]   = s_axis.tdata;
-            (`ETH_TYPE_BASE + 0): ethertype_n[15:8] = s_axis.tdata;
+            (`ETH_DST_MAC_BASE + 0): dst_mac_n[47:40] = s_axis_tdata;
+            (`ETH_DST_MAC_BASE + 1): dst_mac_n[39:32] = s_axis_tdata;
+            (`ETH_DST_MAC_BASE + 2): dst_mac_n[31:24] = s_axis_tdata;
+            (`ETH_DST_MAC_BASE + 3): dst_mac_n[23:16] = s_axis_tdata;
+            (`ETH_DST_MAC_BASE + 4): dst_mac_n[15:8]  = s_axis_tdata;
+            (`ETH_DST_MAC_BASE + 5): dst_mac_n[7:0]   = s_axis_tdata;
+            (`ETH_SRC_MAC_BASE + 0): src_mac_n[47:40] = s_axis_tdata;
+            (`ETH_SRC_MAC_BASE + 1): src_mac_n[39:32] = s_axis_tdata;
+            (`ETH_SRC_MAC_BASE + 2): src_mac_n[31:24] = s_axis_tdata;
+            (`ETH_SRC_MAC_BASE + 3): src_mac_n[23:16] = s_axis_tdata;
+            (`ETH_SRC_MAC_BASE + 4): src_mac_n[15:8]  = s_axis_tdata;
+            (`ETH_SRC_MAC_BASE + 5): src_mac_n[7:0]   = s_axis_tdata;
+            (`ETH_TYPE_BASE + 0): ethertype_n[15:8] = s_axis_tdata;
             (`ETH_TYPE_BASE + 1): begin
-                ethertype_n[7:0] = s_axis.tdata;
+                ethertype_n[7:0] = s_axis_tdata;
                 ethertype_ok_n = (ethertype_n == `ETH_TYPE_IPV4);
             end
         endcase
@@ -124,52 +135,52 @@ module ethernet_ipv4_handler #(
             rel = byte_offset_r - ETH_HEADER_BYTES;
             case (rel)
                 `IPV4_VERSION_IHL_OFFSET: begin
-                    ipv4_version_n = s_axis.tdata[7:4];
-                    ipv4_ihl_n     = s_axis.tdata[3:0];
+                    ipv4_version_n = s_axis_tdata[7:4];
+                    ipv4_ihl_n     = s_axis_tdata[3:0];
                     header_bytes_needed_n = ipv4_ihl_n * 4;
                 end
                 `IPV4_TOTAL_LENGTH_MSB_OFFSET:
                 begin
-                    ipv4_total_length_n[15:8] = s_axis.tdata;
+                    ipv4_total_length_n[15:8] = s_axis_tdata;
                 end
                 `IPV4_TOTAL_LENGTH_LSB_OFFSET:
                 begin
-                    ipv4_total_length_n[7:0]  = s_axis.tdata;
+                    ipv4_total_length_n[7:0]  = s_axis_tdata;
                 end
-                `IPV4_PROTOCOL_OFFSET: ipv4_protocol_n = s_axis.tdata;
+                `IPV4_PROTOCOL_OFFSET: ipv4_protocol_n = s_axis_tdata;
                 (`IPV4_SRC_IP_OFFSET + 0): begin
-                    ipv4_src_ip_n[31:24] = s_axis.tdata;
+                    ipv4_src_ip_n[31:24] = s_axis_tdata;
                 end
                 (`IPV4_SRC_IP_OFFSET + 1): begin
-                    ipv4_src_ip_n[23:16] = s_axis.tdata;
+                    ipv4_src_ip_n[23:16] = s_axis_tdata;
                 end
                 (`IPV4_SRC_IP_OFFSET + 2): begin
-                    ipv4_src_ip_n[15:8] = s_axis.tdata;
+                    ipv4_src_ip_n[15:8] = s_axis_tdata;
                 end
                 (`IPV4_SRC_IP_OFFSET + 3): begin
-                    ipv4_src_ip_n[7:0] = s_axis.tdata;
+                    ipv4_src_ip_n[7:0] = s_axis_tdata;
                 end
 
                 // -------- IPv4 destination IP --------
                 (`IPV4_DST_IP_OFFSET + 0): begin
-                    ipv4_dst_ip_n[31:24] = s_axis.tdata;
+                    ipv4_dst_ip_n[31:24] = s_axis_tdata;
                 end
                 (`IPV4_DST_IP_OFFSET + 1): begin
-                    ipv4_dst_ip_n[23:16] = s_axis.tdata;
+                    ipv4_dst_ip_n[23:16] = s_axis_tdata;
                 end
                 (`IPV4_DST_IP_OFFSET + 2): begin
-                    ipv4_dst_ip_n[15:8] = s_axis.tdata;
+                    ipv4_dst_ip_n[15:8] = s_axis_tdata;
                 end
                 (`IPV4_DST_IP_OFFSET + 3): begin
-                    ipv4_dst_ip_n[7:0] = s_axis.tdata;
+                    ipv4_dst_ip_n[7:0] = s_axis_tdata;
                 end
             endcase
 
             if (!odd_byte_valid_n) begin
-                odd_byte_n = s_axis.tdata;
+                odd_byte_n = s_axis_tdata;
                 odd_byte_valid_n = 1'b1;
             end else begin
-                chksum_acc_n = chksum_acc_n + 16'({odd_byte_n, s_axis.tdata});
+                chksum_acc_n = chksum_acc_n + 16'({odd_byte_n, s_axis_tdata});
                 //chksum_acc_n = chksum_acc_n + 16'( {odd_byte_n, s_axis.tdata} );
                 //chksum_acc_n = (chksum_acc_n & 16'hFFFF) + (chksum_acc_n >> 16);
                 odd_byte_valid_n = 0;
@@ -202,7 +213,7 @@ module ethernet_ipv4_handler #(
                 forwarded_bytes_n = forwarded_bytes_r + 1;
 
                 // Set next-cycle tvalid when forwarding bytes
-                m_axis_tvalid_n =  s_axis.tvalid;
+                m_axis_tvalid_n =  s_axis_tvalid;
                 // Done forwarding?
                 if (forwarded_bytes_n == ipv4_total_length_r - {12'b0, ipv4_ihl_r}*4 ) begin
                     m_axis_tlast_n = 1;
