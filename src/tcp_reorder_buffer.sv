@@ -2,7 +2,7 @@
 
 module tcp_reorder_buffer #(
     parameter int DATA_WIDTH = 8, // Per your comment, 8-bit data
-    parameter int DEPTH      = 64, // Total bytes in buffer
+    parameter int DEPTH      = 8, // Total bytes in buffer
     parameter int SEQ_BITS   = 32
 )(
     input  logic clk,
