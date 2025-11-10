@@ -302,7 +302,7 @@ module UART_TX #(
                 end
 
                 default: begin
-                    state <= IDLE;
+                    state <= TX_IDLE;
                 end
             endcase
         end 
