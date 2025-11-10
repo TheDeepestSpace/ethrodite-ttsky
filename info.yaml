@@ -26,7 +26,9 @@ project:
     - "tcp_reorder_buffer.sv"
     - "tcp_sender.sv"
     - "tcp_top.sv"
-    - "uart_core.sv"
+    - "uart_axi_bridge.sv"
+    - "tt_um_top.sv"
+    - "UART_wrapper.sv"
     - "uart_top.sv"
 
 # The pinout of your project.
