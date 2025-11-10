@@ -3,12 +3,11 @@
 `include "ethernet_info.svh"
 `include "tcp_sender.sv"
 
-`define NUM_PACKETS 5
+`define NUM_PACKETS 10
 
 module tcp_sender_tb;
 
     parameter DATA_WIDTH = `INPUTWIDTH;
-    parameter BYTES = `AXI_BYTES(DATA_WIDTH);
 
     localparam WINDOW_SIZE = 16'h1000;
     localparam ETH_TYPE_IPV4 = `ETH_TYPE_IPV4;
@@ -62,16 +61,13 @@ module tcp_sender_tb;
     // Capture bytes emitted by DUT
     always_ff @(posedge clk or negedge rst_n) begin
         if (m_axis_if.tvalid) begin
-            for (int i = 0; i < BYTES; i++)
-                if (m_axis_if.tkeep[i])
-                    rx_buffer.push_back(m_axis_if.tdata[8*(i) +: 8]);
+            rx_buffer.push_back(m_axis_if.tdata);
         end
     end
 
     // Send payload beat into s_axis_if
-    task send_word(input logic [DATA_WIDTH-1:0] tdata, input logic [DATA_WIDTH/8-1:0] tkeep, input bit tlast);
+    task send_word(input logic [DATA_WIDTH-1:0] tdata, input bit tlast);
         s_axis_if.tdata  = tdata;
-        s_axis_if.tkeep  = tkeep;
         s_axis_if.tvalid = 1'b1;
         s_axis_if.tlast  = tlast;
         do @(posedge clk); while (!s_axis_if.tready);
@@ -155,8 +151,9 @@ module tcp_sender_tb;
 
             // IPv4 checksum
             sum = 0;
-            for (int i=ip_hdr_start; i<ip_hdr_start + `IPV4_HEADER_MIN_BYTES; i+=2)
+            for (int i=ip_hdr_start; i<ip_hdr_start + `IPV4_HEADER_MIN_BYTES; i+=2) begin
                 sum += {bytes[i], bytes[i+1]};
+            end
             while (sum >> 16)
                 sum = (sum & 16'hFFFF) + (sum >> 16);
             sum = ~sum;
@@ -200,15 +197,15 @@ module tcp_sender_tb;
             bytes[tcp_start + `TCP_CHECKSUM_BASE + 1] = sum[7:0];
 
 
-            for (int i = `ETH_HEADER_BYTES; i < pkt_len; i++)
+            for (int i = 0; i < pkt_len; i++)
                 t_crc32 = crc(t_crc32, bytes[i]);
 
-
+            t_crc32 = ~t_crc32;
             //adding the CRC32
-            bytes[pkt_len + 0] = t_crc32[31:24];
-            bytes[pkt_len + 1] = t_crc32[23:16];
-            bytes[pkt_len + 2] = t_crc32[15:8];
-            bytes[pkt_len + 3] = t_crc32[7:0];
+            bytes[pkt_len + 3] = t_crc32[31:24];
+            bytes[pkt_len + 2] = t_crc32[23:16];
+            bytes[pkt_len + 1] = t_crc32[15:8];
+            bytes[pkt_len + 0] = t_crc32[7:0];
 
             // Store expected frame and payload
             expected_frame_bytes = {};
@@ -225,26 +222,12 @@ module tcp_sender_tb;
 
     // Start pulse + optional payload streaming
     task send_instruction_and_payload();
-        automatic int beats;
-        automatic logic [DATA_WIDTH-1:0] beat_word;
-        automatic logic [DATA_WIDTH/8-1:0] out_keep;
         start = 1'b1;
         @(posedge clk);
         start = 1'b0;
         if (has_payload) begin
-            automatic int p_index = 0;
-            beats = (tb_pkt.payload_len + BYTES - 1) / BYTES;
-            for (int b=0; b<beats; b++) begin
-                beat_word = '0;
-                out_keep = '0;
-                for (int k=0; k<BYTES; k++) begin
-                    if (p_index < tb_pkt.payload_len)
-                    begin
-                        beat_word[8*(k) +: 8] = expected_payload[p_index++];
-                        out_keep[k] = 1'b1;
-                    end
-                end
-                send_word(beat_word,out_keep, b == beats-1);
+            for (int n=0; n<tb_pkt.payload_len; n++) begin
+                send_word(expected_payload[n], n == tb_pkt.payload_len-1);
             end
         end
     endtask
@@ -269,7 +252,7 @@ module tcp_sender_tb;
             automatic logic [7:0]  tb_flags = 8'b00010000; // ACK
             automatic logic tb_has_payload = (n % 2);
             automatic logic [7:0] tb_payload [0:255];
-            automatic int tb_payload_len = tb_has_payload ? $urandom_range(0, 1500) : 0;
+            automatic int tb_payload_len = tb_has_payload ? $urandom_range(0, 1000) : 0;
             automatic int timeout = 5000;
             automatic int waited = 0;
             automatic bit pass = 1;
@@ -315,10 +298,7 @@ module tcp_sender_tb;
             @(posedge clk);
             send_instruction_and_payload();
 
-            while ( waited < timeout) begin
-                @(posedge clk);
-                waited++;
-            end
+            repeat(1500) @(posedge clk);
 
             if (rx_buffer.size() != expected_frame_len) begin
                 $display("ERROR: frame length mismatch: expected %0d got %0d",

@@ -49,12 +49,7 @@ module ethernet_ipv4_handler_tb;
         .meta_dst_ip(meta_dst_ip),
         .meta_protocol(meta_protocol),
         .meta_total_length(meta_total_length),
-        .meta_checksum_ok(meta_checksum_ok),
         .meta_ethertype_ok(meta_ethertype_ok),
-        .meta_length_ok(meta_length_ok),
-        .meta_crc32_ok(meta_crc32),
-        .meta_crc32_valid(meta_crc32_valid),
-        .meta_pseudo_header(meta_pseudo_header),
         .meta_ready(meta_ready)
     );
 
@@ -85,20 +80,14 @@ module ethernet_ipv4_handler_tb;
     // Capture m_axis payload
     always_ff @(posedge clk or negedge rst_n) begin
         if (m_axis_if.tvalid) begin
-            // Loop over all bytes in tdata
-            for (int i = 0; i < BYTES; i++) begin
-                if (m_axis_if.tkeep[i]) begin
-                    rx_buffer.push_back(m_axis_if.tdata[8*(i) +: 8]);
-                end
-            end
+            rx_buffer.push_back(m_axis_if.tdata);
         end
     end
 
     // -----------------------------
     // Send single AXI word
-    task send_word(input logic [DATA_WIDTH-1:0] tdata,input logic [DATA_WIDTH/8-1:0] tkeep, input bit tlast);
+    task send_word(input logic [DATA_WIDTH-1:0] tdata, input bit tlast);
         s_axis_if.tdata  = tdata;
-        s_axis_if.tkeep  = tkeep;
         s_axis_if.tvalid = 1'b1;
         s_axis_if.tlast  = tlast;
         // Wait until ready
@@ -232,25 +221,10 @@ module ethernet_ipv4_handler_tb;
 
         // Serialize into AXI words
         num_beats = (pkt_len + BYTES - 1)/BYTES;
-        for (i=0; i<num_beats; i++) begin
-            automatic logic [DATA_WIDTH-1:0] tdata;
-            automatic logic [DATA_WIDTH/8-1:0] tkeep;
-            tdata = '0;
-            tkeep = '0;
-            for (j=0; j<BYTES; j++) begin
-                automatic int idx = i*BYTES + j;
-                if (idx < pkt_len)
-                begin
-                    tdata[8*(j) +: 8] = bytes[idx];
-                    tkeep[j] = 1'b1;
-                end
-                else
-                    tdata[8*(j) +: 8] = 8'h00;
-            end
-            send_word(tdata, tkeep, i==num_beats-1);
+        for (i=0; i<pkt_len; i++) begin
+            send_word(bytes[i], i==pkt_len-1);
         end
     endtask
-
 
     // -----------------------------
     // Main test
@@ -282,7 +256,7 @@ module ethernet_ipv4_handler_tb;
 
             send_packet(valid_pkt, exp_dst_mac, exp_src_mac, exp_src_ip, exp_dst_ip, exp_protocol, exp_total_length, exp_pseudo_header, exp_crc32_ok);
 
-            while(!(meta_crc32_valid && meta_valid)) @(posedge clk);
+            repeat(100) @(posedge clk);
 
             expected_checksum_ok = valid_pkt;
             
@@ -303,17 +277,12 @@ module ethernet_ipv4_handler_tb;
             end
 
             // Combine metadata and payload pass
-            pass = (meta_checksum_ok == expected_checksum_ok) &&
-                                (meta_ethertype_ok == expected_ethertype_ok) &&
-                                (meta_length_ok   == expected_length_ok) &&
-                                (meta_dst_mac     == exp_dst_mac) &&
+            pass =              (meta_dst_mac     == exp_dst_mac) &&
                                 (meta_src_mac     == exp_src_mac) &&
                                 (meta_src_ip      == exp_src_ip) &&
                                 (meta_dst_ip      == exp_dst_ip) &&
                                 (meta_protocol    == exp_protocol) &&
                                 (meta_total_length== exp_total_length) &&
-                                (meta_crc32       == exp_crc32_ok) &&
-                                (meta_pseudo_header == exp_pseudo_header) &&
                                 payload_pass;
 
             if (pass)

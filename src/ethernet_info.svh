@@ -11,7 +11,7 @@
 `ifndef ETHERNET_INFO_SVH
 `define ETHERNET_INFO_SVH
 
-`define INPUTWIDTH              64
+`define INPUTWIDTH              8
 
 `define AXI_BYTES(DATA_WIDTH) ((DATA_WIDTH)/8)
 
@@ -112,7 +112,7 @@
 `define IPV4_ADDR_BYTES            4
 
 //TCP 
-`define IPV4_TCP_PROTO 8'd6
+`define IPV4_TCP_PROTO 16'd6
 
 `define TCP_SRC_PORT_BASE         0     // 16 bits
 `define TCP_DST_PORT_BASE         2     // 16 bits

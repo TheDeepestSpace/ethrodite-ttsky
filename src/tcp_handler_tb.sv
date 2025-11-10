@@ -9,7 +9,6 @@ module tcp_handler_tb;
 
     // Parameters (match your DUT)
     parameter int DATA_WIDTH = `INPUTWIDTH;               // must be defined in includes
-    parameter int BYTES = DATA_WIDTH/8;
 
     // Clock & reset
     logic clk;
@@ -28,11 +27,6 @@ module tcp_handler_tb;
     logic [7:0]  meta_flags;
     logic [15:0] meta_window_size;
     logic [15:0] meta_payload_len;
-    logic        meta_checksum_ok;
-    logic        meta_checksum_valid;
-
-    //DUT INPUT
-    logic [15:0] in_pseudo_header;
 
     // -----------------------------
     // DUT instantiation - change name/params/path to match your module
@@ -52,10 +46,7 @@ module tcp_handler_tb;
         .meta_ack_num(meta_ack_num),
         .meta_flags(meta_flags),
         .meta_window_size(meta_window_size),
-        .meta_payload_len(meta_payload_len),
-        .meta_pseudo_header(in_pseudo_header),
-        .meta_checksum_ok(meta_checksum_ok),
-        .meta_checksum_valid(meta_checksum_valid)
+        .meta_payload_len(meta_payload_len)
     );
 
     // -----------------------------
@@ -79,7 +70,6 @@ module tcp_handler_tb;
     // Ensure interfaces default low
     initial begin
         s_axis_if.tdata  = '0;
-        s_axis_if.tkeep  = '0;
         s_axis_if.tvalid = 0;
         s_axis_if.tlast  = 0;
         m_axis_if.tready = 1; // allow downstream always ready in this TB
@@ -89,12 +79,7 @@ module tcp_handler_tb;
     // Capture m_axis payload bytes as they appear
     always_ff @(posedge clk or negedge rst_n) begin
         if (m_axis_if.tvalid && m_axis_if.tready) begin
-            for (int i = 0; i < BYTES; i++) begin
-                if (m_axis_if.tkeep[i]) begin
-                    // extract byte: big-endian packing assumed
-                    rx_buffer.push_back(m_axis_if.tdata[(8*i) +: 8]);
-                end
-            end
+            rx_buffer.push_back(m_axis_if.tdata);
         end
     end
 
@@ -102,12 +87,10 @@ module tcp_handler_tb;
     // Helper: send single AXI4-Stream word
     task automatic send_word(
         input logic [DATA_WIDTH-1:0] tdata,
-        input logic [BYTES-1:0]      tkeep,
         input bit                    tlast
     );
         begin
             s_axis_if.tdata  = tdata;
-            s_axis_if.tkeep  = tkeep;
             s_axis_if.tvalid = 1'b1;
             s_axis_if.tlast  = tlast;
             // wait for ready (handshake)
@@ -116,14 +99,12 @@ module tcp_handler_tb;
             s_axis_if.tvalid = 1'b0;
             s_axis_if.tlast  = 1'b0;
             s_axis_if.tdata  = '0;
-            s_axis_if.tkeep  = '0;
         end
     endtask
 
     // -----------------------------
     // Generator: produces a TCP packet byte array and expected metadata
     task automatic gen_random_tcp_packet(
-        input logic [15:0] in_pseudo_header,
         output byte         bytes[],             // byte array containing only TCP header+payload (no ethernet/ip)
         output int          total_bytes,         // total bytes in bytes[]
         output int          start_offset,        // random offset before TCP header inside bytes[]
@@ -137,8 +118,6 @@ module tcp_handler_tb;
         output logic [15:0] exp_hdr_checksum
     );
         // params
-        localparam int MIN_OFFSET      = 0;
-        localparam int MAX_OFFSET      = BYTES-1;    // allow up to one-beat misalignment
         localparam int MIN_PAYLOAD_LEN = 4;
         localparam int MAX_PAYLOAD_LEN = 64;
         localparam int TCP_HEADER_LEN  = 20;         // no options
@@ -147,7 +126,6 @@ module tcp_handler_tb;
         int p;
         int unsigned sum = 0;
         begin
-            start_offset     = $urandom_range(MIN_OFFSET, MAX_OFFSET);
             exp_src_port     = $urandom;
             exp_dst_port     = $urandom;
             exp_seq_num      = $urandom;
@@ -157,14 +135,10 @@ module tcp_handler_tb;
             exp_urgent_ptr   = $urandom;
             payload_len      = $urandom_range(MIN_PAYLOAD_LEN, MAX_PAYLOAD_LEN);
 
-            total_bytes = start_offset + TCP_HEADER_LEN + payload_len;
+            total_bytes = TCP_HEADER_LEN + payload_len;
             bytes = new[total_bytes];
 
-            // random prefix padding
-            for (int i = 0; i < start_offset; i++)
-                bytes[i] = $urandom_range(0,255);
-
-            p = start_offset;
+            p = 0;
             // TCP header fields (big-endian)
             bytes[p+0] = exp_src_port[15:8];
             bytes[p+1] = exp_src_port[7:0];
@@ -195,7 +169,7 @@ module tcp_handler_tb;
 
 
             // Compute simple header checksum (header-only one's complement)
-            sum = in_pseudo_header;
+            sum = 0;
             for (int i = p; i < p + total_bytes; i += 2) begin
                 int unsigned word;
                 
@@ -220,7 +194,6 @@ module tcp_handler_tb;
     // send_packet: use generator and stream out AXI words,
     // and record expected metadata & payload for verification
     task automatic send_packet(
-        input logic [15:0] in_pseudo_header,
         output logic [15:0] out_exp_src_port,
         output logic [15:0] out_exp_dst_port,
         output logic [31:0] out_exp_seq_num,
@@ -232,7 +205,6 @@ module tcp_handler_tb;
         byte pkt[];
         int total_bytes, start_offset;
         logic [DATA_WIDTH-1:0] tdata;
-        logic [BYTES-1:0]      tkeep;
         int i,b;
         int tcp_header_start;
         logic [15:0] exp_urgent_ptr;
@@ -240,7 +212,6 @@ module tcp_handler_tb;
         begin
             // generate packet bytes and expected metadata
             gen_random_tcp_packet(
-                in_pseudo_header,
                 pkt, total_bytes, start_offset,
                 out_exp_src_port, out_exp_dst_port,
                 out_exp_seq_num, out_exp_ack_num,
@@ -256,28 +227,8 @@ module tcp_handler_tb;
             for (int k = tcp_header_start + 20; k < total_bytes; k++) expected_payload.push_back(pkt[k]);
 
             // Stream out the full byte array as AXI words (including pre-padding bytes)
-            for (i = 0; i < total_bytes; i += BYTES) begin
-                int valid_in_beat = BYTES;
-                tdata = '0;
-                tkeep = '0;
-                if (i + BYTES > total_bytes)
-                    valid_in_beat = total_bytes - i;
-
-                for (b = 0; b < BYTES; b++) begin
-                    int byte_idx = i + b;
-
-                    if (i == 0 && b < start_offset) begin
-                        tkeep[b] = 1'b0; // pre-offset invalid
-                    end else if (b < valid_in_beat) begin
-                        tdata = tdata | (pkt[byte_idx] << ((b)*8));
-                        tkeep[b] = 1'b1;
-                    end else begin
-                        tkeep[b] = 1'b0; // post-total_bytes invalid
-                    end
-                end
-
-                // tlast on the last beat
-                send_word(tdata, tkeep, (i + BYTES >= total_bytes));
+            for (i = 0; i < total_bytes; i += 1) begin
+                send_word(pkt[i], (i == total_bytes-1));
             end
         end
     endtask
@@ -304,11 +255,10 @@ module tcp_handler_tb;
             // clear capture buffer
             rx_buffer = {};
             expected_payload = {};
-            in_pseudo_header = $urandom;
             meta_ready = 0;
 
             // send a randomized packet and obtain expected metadata & payload
-            send_packet(in_pseudo_header, exp_src_port, exp_dst_port, exp_seq_num, exp_ack_num, exp_flags, exp_window, exp_hdr_chk);
+            send_packet(exp_src_port, exp_dst_port, exp_seq_num, exp_ack_num, exp_flags, exp_window, exp_hdr_chk);
             
             repeat(100) @(posedge clk);
 
@@ -342,19 +292,6 @@ module tcp_handler_tb;
             end
             if (meta_payload_len !== expected_payload.size()) begin
                 $display("META MISMATCH: forwarded length expected %h got %h", expected_payload.size(), meta_payload_len);
-                meta_ok = 0;
-            end
-
-            while (!meta_checksum_valid && waited < timeout) begin
-                @(posedge clk);
-                waited++;
-            end
-
-            // Note: checksum semantics depend on DUT: we compared header-only checksum computed in generator
-            if (meta_checksum_ok !== 1'b1) begin
-                // Many implementations return meta_checksum_ok = 1 if sum==0xFFFF; adjust if DUT semantics differ
-                // We'll just print checksum values for debugging
-                $display("ERROR: DUT checksum_ok = %0b ; expected header checksum 0x%04x", meta_checksum_ok, exp_hdr_chk);
                 meta_ok = 0;
             end
 

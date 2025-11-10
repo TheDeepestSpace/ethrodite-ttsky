@@ -7,8 +7,7 @@ module eth_ipv4_tcp_tb;
   // -----------------------------
   // Parameters
   // -----------------------------
-  parameter DATA_WIDTH = 64;
-  localparam AXI_BYTES = DATA_WIDTH/8;
+  parameter DATA_WIDTH = 8;
 
   // -----------------------------
   // Clock & Reset

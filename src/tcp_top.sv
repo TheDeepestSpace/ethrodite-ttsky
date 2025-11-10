@@ -4,6 +4,8 @@
 `include "tcp_sender.sv"
 `include "tcp_handler.sv"
 `include "tcp_brain.sv"
+`include "ethernet_ipv4_handler.sv"
+`include "tcp_reorder_buffer.sv"
 
 module tcp_top(
     input  logic clk,
@@ -123,19 +125,14 @@ module tcp_top(
         .s_axis            (s_payload_axis),
         .m_axis            (tcp_payload_if),
         .meta_valid        (eth_meta_valid),
-        .meta_crc32_valid  (eth_meta_crc32_valid),
         .meta_ready        (tcp_meta_ready),     // backpressure from brain
-        .meta_pseudo_header(eth_meta_pseudo_header),
         .meta_dst_mac      (eth_meta_dst_mac),
         .meta_src_mac      (eth_meta_src_mac),
         .meta_src_ip       (eth_meta_src_ip),
         .meta_dst_ip       (eth_meta_dst_ip),
         .meta_protocol     (eth_meta_protocol),
         .meta_total_length (eth_meta_total_length),
-        .meta_crc32_ok     (eth_meta_crc32_ok),
-        .meta_checksum_ok  (eth_meta_checksum_ok),
-        .meta_ethertype_ok (eth_meta_ethertype_ok),
-        .meta_length_ok    (eth_meta_length_ok)
+        .meta_ethertype_ok (eth_meta_ethertype_ok)
     );
 
     // TCP header parser / forwarder
@@ -144,7 +141,6 @@ module tcp_top(
         .rst_n              (rst_n),
         .s_axis             (tcp_payload_if),
         .m_axis             (final_payload_if),
-        .meta_pseudo_header (eth_meta_pseudo_header),
         .meta_valid         (tcp_meta_valid),
         .meta_ready         (tcp_meta_ready),
         .meta_src_port      (tcp_meta_src_port),
@@ -153,9 +149,7 @@ module tcp_top(
         .meta_ack_num       (tcp_meta_ack_num),
         .meta_flags         (tcp_meta_flags),
         .meta_window_size   (tcp_meta_window_size),
-        .meta_payload_len   (tcp_meta_payload_len),
-        .meta_checksum_ok   (tcp_meta_checksum_ok),
-        .meta_checksum_valid(tcp_meta_checksum_valid)
+        .meta_payload_len   (tcp_meta_payload_len)
     );
 
     // TCP sender (transmit engine)

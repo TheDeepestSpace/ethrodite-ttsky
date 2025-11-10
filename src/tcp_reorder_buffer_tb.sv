@@ -52,10 +52,7 @@ module tcp_reorder_buffer_tb;
     // Capture m_axis output
     always_ff @(posedge clk) begin
         if (m_axis_if.tvalid && m_axis_if.tready) begin
-            for (int i = 0; i < BYTES; i++) begin
-                if (m_axis_if.tkeep[i])
-                    rx_buffer.push_back(m_axis_if.tdata[8*(i) +: 8]);
-            end
+            rx_buffer.push_back(m_axis_if.tdata);
         end
     end
 
@@ -63,12 +60,10 @@ module tcp_reorder_buffer_tb;
     // Helper: send single AXI beat
     task automatic send_word(
         input logic [DATA_WIDTH-1:0] tdata,
-        input logic [BYTES-1:0]      tkeep,
         input bit                    tlast
     );
         begin
             s_axis_if.tdata  = tdata;
-            s_axis_if.tkeep  = tkeep;
             s_axis_if.tvalid = 1'b1;
             s_axis_if.tlast  = tlast;
             @(posedge clk);
@@ -76,29 +71,19 @@ module tcp_reorder_buffer_tb;
             s_axis_if.tvalid = 0;
             s_axis_if.tlast  = 0;
             s_axis_if.tdata  = '0;
-            s_axis_if.tkeep  = '0;
         end
     endtask
 
     // -----------------------------
     // Send full frame with seq_start
     task automatic send_frame(byte payload[], int len, logic [31:0] frame_seq);
-        logic [DATA_WIDTH-1:0] tdata;
-        logic [BYTES-1:0] tkeep;
-        int i, b;
+        int i;
 
         seq_start   = frame_seq;
         @(posedge clk);
 
-        for (i = 0; i < len; i += BYTES) begin
-            int bytes_in_beat = (i+BYTES <= len) ? BYTES : (len-i);
-            tdata = '0;
-            tkeep = '0;
-            for (b = 0; b < bytes_in_beat; b++) begin
-                tdata = tdata | (payload[i+b] << ((b)*8));
-                tkeep[b] = 1'b1;
-            end
-            send_word(tdata, tkeep, (i+BYTES >= len));
+        for (i = 0; i < len; i += 1) begin
+            send_word(payload[i], (i == len-1));
         end
     endtask
 
@@ -155,7 +140,6 @@ module tcp_reorder_buffer_tb;
         m_axis_if.tready = 1;
 
         s_axis_if.tdata  = '0;
-        s_axis_if.tkeep  = '0;
         s_axis_if.tvalid = 0;
         s_axis_if.tlast  = 0;
         s_axis_if.tuser  = '0;

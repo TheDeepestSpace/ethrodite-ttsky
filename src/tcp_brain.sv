@@ -39,9 +39,8 @@ typedef enum logic [1:0] {
 
 module tcp_brain #(
     parameter int DATA_WIDTH        = `INPUTWIDTH,
-    parameter int INSTRUCTION_WIDTH = 16, // Typo fixed: INSTURCTION_WIDTH
-    parameter int SEQ_BITS   = 32,
-    parameter bit KEEP_ENABLE       = 1
+    parameter int INSTRUCTION_WIDTH = 8, // Typo fixed: INSTURCTION_WIDTH
+    parameter int SEQ_BITS   = 32
 )(
     input  logic clk,
     input  logic rst_n,
@@ -160,6 +159,7 @@ module tcp_brain #(
                     // Pulse sender_start for one cycle, then go wait-for-sender
                     sender_start <= 1;
                     sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
+                    
                     // don't accept metadata while initiating send
                     base_valid <= 0;
                     // move into waiting state while preserving the pending logical next state
@@ -246,6 +246,7 @@ module tcp_brain #(
                     
                     // Ready for "close" command
                     instruction_axis.tready <= 1;
+                    meta_ready<= 0;
 
                     if (meta_valid&~meta_ready) begin
                         meta_ready <= 1;
@@ -307,10 +308,9 @@ module tcp_brain #(
 
                         // prepare send so sender_info is stable for one cycle
                         state_n <= S_ESTABLISHED;
-                        sender_info.tcp_checksum <= 16'h0000; // No payload, checksum not needed
-                        state_r      <= S_PREPARE_SEND;
-                    end
-                    
+                        sender_info.tcp_checksum <= in_info.tcp_checksum; // No payload, checksum not needed
+                        state_r <= S_PREPARE_SEND;
+                    end                    
                     else if (instruction_axis.tvalid && instruction_axis.tdata == CMD_CLOSE) begin
                         // --- Priority 3: Handle Active Close (App wants to close) ---
                         sender_info.seq_num    <= client_seq_num;
