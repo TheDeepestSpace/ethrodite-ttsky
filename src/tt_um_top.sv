@@ -49,10 +49,17 @@ module tt_um_tcp_top #(
   wire _unused = ena;
 
   // -------------------------------
-  // Internal AXI Stream connections
+  // Internal AXI Stream signals
   // -------------------------------
-  axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) uart_in_if ();
-  axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) uart_out_if ();
+  logic [DATA_WIDTH-1:0] uart_in_tdata;
+  logic                  uart_in_tvalid;
+  logic                  uart_in_tready;
+  logic                  uart_in_tlast;
+  
+  logic [DATA_WIDTH-1:0] uart_out_tdata;
+  logic                  uart_out_tvalid;
+  logic                  uart_out_tready;
+  logic                  uart_out_tlast;
 
   // -------------------------------
   // UART bridge (connects pins <-> AXI)
@@ -78,8 +85,14 @@ module tt_um_tcp_top #(
       .rst_n(rst_n),
 
       // AXI stream connections
-      .uart_in (uart_in_if),
-      .uart_out(uart_out_if),
+      .uart_in_tdata (uart_in_tdata),
+      .uart_in_tvalid(uart_in_tvalid),
+      .uart_in_tready(uart_in_tready),
+      .uart_in_tlast (uart_in_tlast),
+      .uart_out_tdata (uart_out_tdata),
+      .uart_out_tvalid(uart_out_tvalid),
+      .uart_out_tready(uart_out_tready),
+      .uart_out_tlast (uart_out_tlast),
 
       // Physical UART pins
       .uart_tx(uart_tx),
@@ -100,9 +113,15 @@ module tt_um_tcp_top #(
       .clk  (clk),
       .rst_n(rst_n),
 
-      // AXI-stream UART side
-      .uart_out(uart_in_if),
-      .uart_in (uart_out_if)
+      // AXI-stream UART side (note: swapped from bridge perspective)
+      .uart_in_tdata (uart_out_tdata),
+      .uart_in_tvalid(uart_out_tvalid),
+      .uart_in_tready(uart_out_tready),
+      .uart_in_tlast (uart_out_tlast),
+      .uart_out_tdata (uart_in_tdata),
+      .uart_out_tvalid(uart_in_tvalid),
+      .uart_out_tready(uart_in_tready),
+      .uart_out_tlast (uart_in_tlast)
   );
 
 endmodule

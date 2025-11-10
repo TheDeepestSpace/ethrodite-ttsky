@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 `include "ethernet_info.svh"
 // `include "crc32.sv"
-`include "axi_stream_if.sv"
 
 `ifndef TCP_PACKET_INFO_S_SV
 `define TCP_PACKET_INFO_S_SV
@@ -14,8 +13,19 @@ module tcp_sender #(
     input logic rst_n,
     input logic start,
     input tcp_packet_info_s i_pkt,
-    axi_stream_if.slave s_axis,
-    axi_stream_if.master m_axis,
+    
+    // AXI4-Stream slave (incoming payload)
+    input  logic [DATA_WIDTH-1:0] s_axis_tdata,
+    input  logic                  s_axis_tvalid,
+    output logic                  s_axis_tready,
+    input  logic                  s_axis_tlast,
+
+    // AXI4-Stream master (outgoing packet)
+    output logic [DATA_WIDTH-1:0] m_axis_tdata,
+    output logic                  m_axis_tvalid,
+    input  logic                  m_axis_tready,
+    output logic                  m_axis_tlast,
+    
     output logic busy
 );
 
@@ -58,7 +68,7 @@ module tcp_sender #(
   endfunction
 
   assign busy = (state != ST_IDLE);
-  assign s_axis.tready = (state == ST_SEND_PAYLOAD) && m_axis.tready;
+  assign s_axis_tready = (state == ST_SEND_PAYLOAD) && m_axis_tready;
 
   // ------------------------------------------------------------
   // Output logic
@@ -67,9 +77,9 @@ module tcp_sender #(
     tcp_chksum    = fold_checksum(tcp_sum32_r);
     ipv4_chksum   = fold_checksum(ipv4_sum32_r);
 
-    m_axis.tvalid = 0;
-    m_axis.tlast  = 0;
-    m_axis.tdata  = '0;
+    m_axis_tvalid = 0;
+    m_axis_tlast  = 0;
+    m_axis_tdata  = '0;
     byte_cnt_n    = byte_cnt_r;
     state_n       = state;
     crc32_n       = crc32_r;
@@ -95,9 +105,9 @@ module tcp_sender #(
       // Stream out header bytes directly
       // ----------------------------------------------------
       ST_SEND_HDR: begin
-        if (m_axis.tready) begin
+        if (m_axis_tready) begin
           logic [15:0] ipv4_word;
-          m_axis.tvalid = 1;
+          m_axis_tvalid = 1;
 
           case (byte_cnt_r)
             0: ipv4_word = {8'h45, 8'h00};  // Version/IHL + DSCP/ECN
@@ -120,70 +130,70 @@ module tcp_sender #(
 
           case (byte_cnt_r)
             // --- Ethernet header ---
-            0:  m_axis.tdata = pkt_r.dst_mac[47:40];
-            1:  m_axis.tdata = pkt_r.dst_mac[39:32];
-            2:  m_axis.tdata = pkt_r.dst_mac[31:24];
-            3:  m_axis.tdata = pkt_r.dst_mac[23:16];
-            4:  m_axis.tdata = pkt_r.dst_mac[15:8];
-            5:  m_axis.tdata = pkt_r.dst_mac[7:0];
-            6:  m_axis.tdata = pkt_r.src_mac[47:40];
-            7:  m_axis.tdata = pkt_r.src_mac[39:32];
-            8:  m_axis.tdata = pkt_r.src_mac[31:24];
-            9:  m_axis.tdata = pkt_r.src_mac[23:16];
-            10: m_axis.tdata = pkt_r.src_mac[15:8];
-            11: m_axis.tdata = pkt_r.src_mac[7:0];
-            12: m_axis.tdata = 8'h08;
-            13: m_axis.tdata = 8'h00;
+            0:  m_axis_tdata = pkt_r.dst_mac[47:40];
+            1:  m_axis_tdata = pkt_r.dst_mac[39:32];
+            2:  m_axis_tdata = pkt_r.dst_mac[31:24];
+            3:  m_axis_tdata = pkt_r.dst_mac[23:16];
+            4:  m_axis_tdata = pkt_r.dst_mac[15:8];
+            5:  m_axis_tdata = pkt_r.dst_mac[7:0];
+            6:  m_axis_tdata = pkt_r.src_mac[47:40];
+            7:  m_axis_tdata = pkt_r.src_mac[39:32];
+            8:  m_axis_tdata = pkt_r.src_mac[31:24];
+            9:  m_axis_tdata = pkt_r.src_mac[23:16];
+            10: m_axis_tdata = pkt_r.src_mac[15:8];
+            11: m_axis_tdata = pkt_r.src_mac[7:0];
+            12: m_axis_tdata = 8'h08;
+            13: m_axis_tdata = 8'h00;
 
             // --- IPv4 header ---
-            14: m_axis.tdata = 8'h45;
-            15: m_axis.tdata = 8'h00;
+            14: m_axis_tdata = 8'h45;
+            15: m_axis_tdata = 8'h00;
             16:
-            m_axis.tdata = 8'((32'(IPV4_HEADER_BYTES) + 32'(TCP_HEADER_BYTES) + 32'(pkt_r.payload_len)) >> 8);
+            m_axis_tdata = 8'((32'(IPV4_HEADER_BYTES) + 32'(TCP_HEADER_BYTES) + 32'(pkt_r.payload_len)) >> 8);
             17:
-            m_axis.tdata = 8'((32'(IPV4_HEADER_BYTES) + 32'(TCP_HEADER_BYTES) + 32'(pkt_r.payload_len)) & 32'hFF);
-            18: m_axis.tdata = 8'h00;
-            19: m_axis.tdata = 8'h00;
-            20: m_axis.tdata = 8'h40;
-            21: m_axis.tdata = 8'h00;
-            22: m_axis.tdata = 8'h40;
-            23: m_axis.tdata = 8'h06;
-            24: m_axis.tdata = ipv4_chksum[15:8];  // IPv4 checksum placeholder
-            25: m_axis.tdata = ipv4_chksum[7:0];
-            26: m_axis.tdata = pkt_r.src_ip[31:24];
-            27: m_axis.tdata = pkt_r.src_ip[23:16];
-            28: m_axis.tdata = pkt_r.src_ip[15:8];
-            29: m_axis.tdata = pkt_r.src_ip[7:0];
-            30: m_axis.tdata = pkt_r.dst_ip[31:24];
-            31: m_axis.tdata = pkt_r.dst_ip[23:16];
-            32: m_axis.tdata = pkt_r.dst_ip[15:8];
-            33: m_axis.tdata = pkt_r.dst_ip[7:0];
+            m_axis_tdata = 8'((32'(IPV4_HEADER_BYTES) + 32'(TCP_HEADER_BYTES) + 32'(pkt_r.payload_len)) & 32'hFF);
+            18: m_axis_tdata = 8'h00;
+            19: m_axis_tdata = 8'h00;
+            20: m_axis_tdata = 8'h40;
+            21: m_axis_tdata = 8'h00;
+            22: m_axis_tdata = 8'h40;
+            23: m_axis_tdata = 8'h06;
+            24: m_axis_tdata = ipv4_chksum[15:8];  // IPv4 checksum placeholder
+            25: m_axis_tdata = ipv4_chksum[7:0];
+            26: m_axis_tdata = pkt_r.src_ip[31:24];
+            27: m_axis_tdata = pkt_r.src_ip[23:16];
+            28: m_axis_tdata = pkt_r.src_ip[15:8];
+            29: m_axis_tdata = pkt_r.src_ip[7:0];
+            30: m_axis_tdata = pkt_r.dst_ip[31:24];
+            31: m_axis_tdata = pkt_r.dst_ip[23:16];
+            32: m_axis_tdata = pkt_r.dst_ip[15:8];
+            33: m_axis_tdata = pkt_r.dst_ip[7:0];
 
             // --- TCP header ---
-            34: m_axis.tdata = pkt_r.src_port[15:8];
-            35: m_axis.tdata = pkt_r.src_port[7:0];
-            36: m_axis.tdata = pkt_r.dst_port[15:8];
-            37: m_axis.tdata = pkt_r.dst_port[7:0];
-            38: m_axis.tdata = pkt_r.seq_num[31:24];
-            39: m_axis.tdata = pkt_r.seq_num[23:16];
-            40: m_axis.tdata = pkt_r.seq_num[15:8];
-            41: m_axis.tdata = pkt_r.seq_num[7:0];
-            42: m_axis.tdata = pkt_r.ack_num[31:24];
-            43: m_axis.tdata = pkt_r.ack_num[23:16];
-            44: m_axis.tdata = pkt_r.ack_num[15:8];
-            45: m_axis.tdata = pkt_r.ack_num[7:0];
-            46: m_axis.tdata = 8'h50;  // data offset 5 words
-            47: m_axis.tdata = pkt_r.tcp_flags;
-            48: m_axis.tdata = pkt_r.window[15:8];
-            49: m_axis.tdata = pkt_r.window[7:0];
-            50: m_axis.tdata = tcp_chksum[15:8];  // filled inline
-            51: m_axis.tdata = tcp_chksum[7:0];
-            52: m_axis.tdata = 8'h00;
-            53: m_axis.tdata = 8'h00;
-            default: m_axis.tdata = 8'h00;
+            34: m_axis_tdata = pkt_r.src_port[15:8];
+            35: m_axis_tdata = pkt_r.src_port[7:0];
+            36: m_axis_tdata = pkt_r.dst_port[15:8];
+            37: m_axis_tdata = pkt_r.dst_port[7:0];
+            38: m_axis_tdata = pkt_r.seq_num[31:24];
+            39: m_axis_tdata = pkt_r.seq_num[23:16];
+            40: m_axis_tdata = pkt_r.seq_num[15:8];
+            41: m_axis_tdata = pkt_r.seq_num[7:0];
+            42: m_axis_tdata = pkt_r.ack_num[31:24];
+            43: m_axis_tdata = pkt_r.ack_num[23:16];
+            44: m_axis_tdata = pkt_r.ack_num[15:8];
+            45: m_axis_tdata = pkt_r.ack_num[7:0];
+            46: m_axis_tdata = 8'h50;  // data offset 5 words
+            47: m_axis_tdata = pkt_r.tcp_flags;
+            48: m_axis_tdata = pkt_r.window[15:8];
+            49: m_axis_tdata = pkt_r.window[7:0];
+            50: m_axis_tdata = tcp_chksum[15:8];  // filled inline
+            51: m_axis_tdata = tcp_chksum[7:0];
+            52: m_axis_tdata = 8'h00;
+            53: m_axis_tdata = 8'h00;
+            default: m_axis_tdata = 8'h00;
           endcase
 
-          crc32_n = crc(crc32_n, m_axis.tdata);
+          crc32_n = crc(crc32_n, m_axis_tdata);
           if (byte_cnt_r == 16'(HEADER_BYTES - 1)) begin
             byte_cnt_n = 0;
             if (pkt_r.payload_len == 0) begin
@@ -193,8 +203,8 @@ module tcp_sender #(
           end else byte_cnt_n = byte_cnt_n + 1;
 
           if (byte_cnt_r >= 26 && byte_cnt_r <= 49) begin
-            if (byte_cnt_r[0] == 1'b1) tcp_sum32_n += {16'b0, odd_byte_r, m_axis.tdata};
-            else odd_byte_n = m_axis.tdata;
+            if (byte_cnt_r[0] == 1'b1) tcp_sum32_n += {16'b0, odd_byte_r, m_axis_tdata};
+            else odd_byte_n = m_axis_tdata;
           end
         end
       end
@@ -203,11 +213,11 @@ module tcp_sender #(
       // Stream payload directly from s_axis
       // ----------------------------------------------------
       ST_SEND_PAYLOAD: begin
-        if (s_axis.tvalid && m_axis.tready) begin
-          m_axis.tvalid = 1;
-          m_axis.tdata = s_axis.tdata;
-          crc32_n = crc(crc32_n, s_axis.tdata);
-          if (s_axis.tlast || byte_cnt_r == pkt_r.payload_len - 1) begin
+        if (s_axis_tvalid && m_axis_tready) begin
+          m_axis_tvalid = 1;
+          m_axis_tdata = s_axis_tdata;
+          crc32_n = crc(crc32_n, s_axis_tdata);
+          if (s_axis_tlast || byte_cnt_r == pkt_r.payload_len - 1) begin
             state_n = ST_SEND_CRC;
             byte_cnt_n = 0;
             crc32_n = ~crc32_n;
@@ -219,10 +229,10 @@ module tcp_sender #(
       // Transmit CRC32
       // ----------------------------------------------------
       ST_SEND_CRC: begin
-        if (m_axis.tready) begin
-          m_axis.tvalid = 1;
-          m_axis.tdata  = crc32_r[8*byte_cnt_r[1:0]+:8];
-          m_axis.tlast  = (byte_cnt_r[1:0] == 2'd3);
+        if (m_axis_tready) begin
+          m_axis_tvalid = 1;
+          m_axis_tdata  = crc32_r[8*byte_cnt_r[1:0]+:8];
+          m_axis_tlast  = (byte_cnt_r[1:0] == 2'd3);
           if (byte_cnt_r[1:0] == 2'd3) begin
             state_n = ST_IDLE;
             byte_cnt_n = 0;

@@ -1,5 +1,4 @@
 // uart_tcp_mux.sv
-`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
 
 module uart_tcp_mux #(
@@ -8,43 +7,59 @@ module uart_tcp_mux #(
     input logic clk,
     input logic rst_n,
 
-    // Physical UART
-           axi_stream_if.slave  uart_in,
-    // =======================================THIS INPUT PORT GOES TO ALL THESE OUTPUT PORTS
-    // AXI4-Stream slave (commands from App)
-           axi_stream_if.master instructions_to_brain_axis,
-    // AXI4-Stream slave (incoming PAYLOAD_COMING from PHY)
-           axi_stream_if.master eth_payload_axis,
-    // AXI4-Stream slave (outgoing PAYLOAD_COMING from App to be sent)
-           axi_stream_if.master payload_to_be_sent_axis,
+    // Physical UART - slave (input)
+    input  logic [DATA_WIDTH-1:0] uart_in_tdata,
+    input  logic                  uart_in_tvalid,
+    output logic                  uart_in_tready,
+    input  logic                  uart_in_tlast,
+    
+    // AXI4-Stream master (commands to brain)
+    output logic [DATA_WIDTH-1:0] instructions_to_brain_axis_tdata,
+    output logic                  instructions_to_brain_axis_tvalid,
+    input  logic                  instructions_to_brain_axis_tready,
+    output logic                  instructions_to_brain_axis_tlast,
+    
+    // AXI4-Stream master (ethernet payload)
+    output logic [DATA_WIDTH-1:0] eth_payload_axis_tdata,
+    output logic                  eth_payload_axis_tvalid,
+    input  logic                  eth_payload_axis_tready,
+    output logic                  eth_payload_axis_tlast,
+    
+    // AXI4-Stream master (payload to be sent)
+    output logic [DATA_WIDTH-1:0] payload_to_be_sent_axis_tdata,
+    output logic                  payload_to_be_sent_axis_tvalid,
+    input  logic                  payload_to_be_sent_axis_tready,
+    output logic                  payload_to_be_sent_axis_tlast,
+    
     // Connection info (latched on instruction)
     output tcp_command_info     out_info,
 
-    // input from UART
-    axi_stream_if.master uart_out,
-    // =======================================THIS OUTPUT PORT IS WRITTEN TO BUY ALL THESE INPUT PORTS
-    // output to rest of FPGA (reordered, to application/upper layer)
-    axi_stream_if.slave  rest_of_frame_axis,
-    // output to PHY (frames to be transmitted)
-    axi_stream_if.slave  eth_phy_axis,
-    // AXI4-Stream master (to App - notifications / responses)
-    axi_stream_if.slave  app_response_axis
+    // UART output - master
+    output logic [DATA_WIDTH-1:0] uart_out_tdata,
+    output logic                  uart_out_tvalid,
+    input  logic                  uart_out_tready,
+    output logic                  uart_out_tlast,
+    
+    // Rest of frame - slave (input)
+    input  logic [DATA_WIDTH-1:0] rest_of_frame_axis_tdata,
+    input  logic                  rest_of_frame_axis_tvalid,
+    output logic                  rest_of_frame_axis_tready,
+    input  logic                  rest_of_frame_axis_tlast,
+    
+    // Ethernet PHY - slave (input)
+    input  logic [DATA_WIDTH-1:0] eth_phy_axis_tdata,
+    input  logic                  eth_phy_axis_tvalid,
+    output logic                  eth_phy_axis_tready,
+    input  logic                  eth_phy_axis_tlast,
+    
+    // App response - slave (input)
+    input  logic [DATA_WIDTH-1:0] app_response_axis_tdata,
+    input  logic                  app_response_axis_tvalid,
+    output logic                  app_response_axis_tready,
+    input  logic                  app_response_axis_tlast
 );
 
-  // Internal parameterized interfaces to ensure width consistency
-  axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) uart_in_internal();
-  axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) uart_out_internal();
-
-  // Connect external interfaces to internal parameterized ones
-  assign uart_in_internal.tdata = uart_in.tdata;
-  assign uart_in_internal.tvalid = uart_in.tvalid;
-  assign uart_in_internal.tlast = uart_in.tlast;
-  assign uart_in.tready = uart_in_internal.tready;
-
-  assign uart_out.tdata = uart_out_internal.tdata;
-  assign uart_out.tvalid = uart_out_internal.tvalid;
-  assign uart_out.tlast = uart_out_internal.tlast;
-  assign uart_out_internal.tready = uart_out.tready;
+  // No internal interfaces needed - using flattened ports directly
 
   // Packet type constants
   localparam logic [7:0] PARROT = 8'd0;  // send back what we sent them
@@ -81,22 +96,28 @@ module uart_tcp_mux #(
 
   always_comb begin
     //all same data for UART --> REST OF CHIP
-    instructions_to_brain_axis.tdata = uart_rx_data;
-    eth_payload_axis.tdata = uart_rx_data;
-    payload_to_be_sent_axis.tdata = uart_rx_data;
-    uart_out_internal.tdata = (state_r == S_SEND_HEADER) ? uart_header : uart_tx_data;
+    instructions_to_brain_axis_tdata = uart_rx_data;
+    eth_payload_axis_tdata = uart_rx_data;
+    payload_to_be_sent_axis_tdata = uart_rx_data;
+    uart_out_tdata = (state_r == S_SEND_HEADER) ? uart_header : uart_tx_data;
 
     //valid if in outputting state
-    instructions_to_brain_axis.tvalid = (state_r == S_SEND_TO_BRAIN);
-    eth_payload_axis.tvalid = (state_r == S_SEND_TO_ETH);
-    payload_to_be_sent_axis.tvalid = (state_r == S_SEND_TO_TCP_SENDER);
-    uart_out_internal.tvalid = (state_r == S_SEND_TO_UART || state_r == S_SEND_HEADER);
+    instructions_to_brain_axis_tvalid = (state_r == S_SEND_TO_BRAIN);
+    eth_payload_axis_tvalid = (state_r == S_SEND_TO_ETH);
+    payload_to_be_sent_axis_tvalid = (state_r == S_SEND_TO_TCP_SENDER);
+    uart_out_tvalid = (state_r == S_SEND_TO_UART || state_r == S_SEND_HEADER);
 
     //valid if in polling state
-    uart_in_internal.tready = (state_r == S_POLL_UART || state_r == S_GET_BYTE || state_r == S_GET_DATA);
-    rest_of_frame_axis.tready = (state_r == S_POLL_TCP_OUTPUT);
-    eth_phy_axis.tready = (state_r == S_POLL_FRAMES_OUT);
-    app_response_axis.tready = (state_r == S_POLL_BRAIN_STATUS);
+    uart_in_tready = (state_r == S_POLL_UART || state_r == S_GET_BYTE || state_r == S_GET_DATA);
+    rest_of_frame_axis_tready = (state_r == S_POLL_TCP_OUTPUT);
+    eth_phy_axis_tready = (state_r == S_POLL_FRAMES_OUT);
+    app_response_axis_tready = (state_r == S_POLL_BRAIN_STATUS);
+    
+    // tlast signals (not used in this simple mux)
+    instructions_to_brain_axis_tlast = 1'b0;
+    eth_payload_axis_tlast = 1'b0;
+    payload_to_be_sent_axis_tlast = 1'b0;
+    uart_out_tlast = 1'b0;
   end
 
   always_ff @(posedge clk) begin
@@ -105,11 +126,11 @@ module uart_tcp_mux #(
     end else begin
       case (state_r)
         S_POLL_UART: begin
-          if (uart_in_internal.tvalid && uart_in_internal.tready) begin
-            case (uart_in_internal.tdata)
+          if (uart_in_tvalid && uart_in_tready) begin
+            case (uart_in_tdata)
               PARROT: begin
                 $display("got parrot");
-                uart_tx_data <= uart_in_internal.tdata;
+                uart_tx_data <= uart_in_tdata;
                 uart_header <= PARROT;
                 state_r <= S_SEND_HEADER;
               end
@@ -134,8 +155,8 @@ module uart_tcp_mux #(
                 state_n <= S_GET_DATA;
               end
               default: begin
-                $display("got garbage: %h", uart_in_internal.tdata);
-                uart_tx_data <= uart_in_internal.tdata;
+                $display("got garbage: %h", uart_in_tdata);
+                uart_tx_data <= uart_in_tdata;
                 uart_header <= PARROT;
                 state_r <= S_SEND_HEADER;
               end
@@ -146,31 +167,31 @@ module uart_tcp_mux #(
         end
 
         S_GET_BYTE: begin
-          if (uart_in_internal.tvalid && uart_in_internal.tready) begin
+          if (uart_in_tvalid && uart_in_tready) begin
             state_r <= state_n;
-            uart_rx_data <= uart_in_internal.tdata;
+            uart_rx_data <= uart_in_tdata;
           end
         end
 
         S_SEND_TO_ETH: begin
-          if (eth_payload_axis.tvalid && eth_payload_axis.tready) begin
+          if (eth_payload_axis_tvalid && eth_payload_axis_tready) begin
             state_r <= S_POLL_UART;
           end
         end
         S_SEND_TO_TCP_SENDER: begin
-          if (payload_to_be_sent_axis.tvalid && payload_to_be_sent_axis.tready) begin
+          if (payload_to_be_sent_axis_tvalid && payload_to_be_sent_axis_tready) begin
             state_r <= S_POLL_UART;
           end
         end
         S_SEND_TO_BRAIN: begin
-          if (instructions_to_brain_axis.tvalid && instructions_to_brain_axis.tready) begin
+          if (instructions_to_brain_axis_tvalid && instructions_to_brain_axis_tready) begin
             state_r <= S_POLL_UART;
           end
         end
         S_GET_DATA: begin
-          if (uart_in_internal.tvalid && uart_in_internal.tready) begin
+          if (uart_in_tvalid && uart_in_tready) begin
             state_r <= S_LOAD_INFO;
-            uart_extra_data <= uart_in_internal.tdata;
+            uart_extra_data <= uart_in_tdata;
           end
         end
 
@@ -227,8 +248,8 @@ module uart_tcp_mux #(
         end
 
         S_POLL_TCP_OUTPUT: begin
-          if (rest_of_frame_axis.tvalid && rest_of_frame_axis.tready) begin
-            uart_tx_data <= rest_of_frame_axis.tdata;
+          if (rest_of_frame_axis_tvalid && rest_of_frame_axis_tready) begin
+            uart_tx_data <= rest_of_frame_axis_tdata;
             state_r <= S_SEND_HEADER;
             uart_header <= REMAINING_LAYER;
           end else begin
@@ -237,8 +258,8 @@ module uart_tcp_mux #(
         end
 
         S_POLL_FRAMES_OUT: begin
-          if (eth_phy_axis.tvalid && eth_phy_axis.tready) begin
-            uart_tx_data <= eth_phy_axis.tdata;
+          if (eth_phy_axis_tvalid && eth_phy_axis_tready) begin
+            uart_tx_data <= eth_phy_axis_tdata;
             state_r <= S_SEND_HEADER;
             uart_header <= ETH_FRAME_OUT;
           end else begin
@@ -246,8 +267,8 @@ module uart_tcp_mux #(
           end
         end
         S_POLL_BRAIN_STATUS: begin
-          if (app_response_axis.tvalid && app_response_axis.tready) begin
-            uart_tx_data <= app_response_axis.tdata;
+          if (app_response_axis_tvalid && app_response_axis_tready) begin
+            uart_tx_data <= app_response_axis_tdata;
             state_r <= S_SEND_HEADER;
             uart_header <= BRAIN_STATUS;
           end else begin
@@ -256,14 +277,14 @@ module uart_tcp_mux #(
         end
 
         S_SEND_HEADER: begin
-          if (uart_out_internal.tvalid && uart_out_internal.tready) begin
+          if (uart_out_tvalid && uart_out_tready) begin
             state_r <= S_SEND_TO_UART;
           end
         end
 
 
         S_SEND_TO_UART: begin
-          if (uart_out_internal.tvalid && uart_out_internal.tready) begin
+          if (uart_out_tvalid && uart_out_tready) begin
             state_r <= S_POLL_UART;
           end
         end

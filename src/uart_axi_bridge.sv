@@ -1,5 +1,4 @@
 // uart_axi_bridge.sv
-`include "axi_stream_if.sv"
 // `include "UART_wrapper.sv"
 
 module uart_axi_bridge #(
@@ -9,9 +8,17 @@ module uart_axi_bridge #(
     input  logic clk,
     input  logic rst_n,
 
-    // AXI-stream side (connected to mux)
-    axi_stream_if.slave  uart_in,   // incoming bytes from MUX (TX data to send)
-    axi_stream_if.master uart_out,  // outgoing bytes to MUX (RX data received)
+    // AXI-stream side (connected to mux) - slave interface (incoming)
+    input  logic [DATA_WIDTH-1:0] uart_in_tdata,
+    input  logic                  uart_in_tvalid,
+    output logic                  uart_in_tready,
+    input  logic                  uart_in_tlast,
+
+    // AXI-stream side (connected to mux) - master interface (outgoing)
+    output logic [DATA_WIDTH-1:0] uart_out_tdata,
+    output logic                  uart_out_tvalid,
+    input  logic                  uart_out_tready,
+    output logic                  uart_out_tlast,
 
     // Physical UART
     output logic uart_tx,           // serial TX pin
@@ -61,27 +68,30 @@ module uart_axi_bridge #(
     // ======================================
     // AXI to UART TX adapter
     // ======================================
-    assign uart_in.tready = !tx_busy;   // UART can accept a byte if not busy
-    assign tx_en = uart_in.tvalid && uart_in.tready;
-    assign tx_data = uart_in.tdata;
+    assign uart_in_tready = !tx_busy;   // UART can accept a byte if not busy
+    assign tx_en = uart_in_tvalid && uart_in_tready;
+    assign tx_data = uart_in_tdata;
+
+    // tlast not used in this simple bridge
+    assign uart_out_tlast = 1'b0;
 
     // ======================================
     // UART RX to AXI adapter
     // ======================================
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            uart_out.tvalid <= 1'b0;
-            uart_out.tdata  <= '0;
+            uart_out_tvalid <= 1'b0;
+            uart_out_tdata  <= '0;
         end else begin
             // When UART RX finishes receiving a byte
             if (rx_done) begin
-                uart_out.tdata  <= rx_data;
+                uart_out_tdata  <= rx_data;
                 $display("sending %h", rx_data);
-                uart_out.tvalid <= 1'b1;
+                uart_out_tvalid <= 1'b1;
             end
             // Clear valid when mux accepts it
-            else if (uart_out.tvalid && uart_out.tready) begin
-                uart_out.tvalid <= 1'b0;
+            else if (uart_out_tvalid && uart_out_tready) begin
+                uart_out_tvalid <= 1'b0;
             end
         end
     end

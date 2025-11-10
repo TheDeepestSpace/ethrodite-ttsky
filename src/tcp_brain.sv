@@ -10,10 +10,16 @@ module tcp_brain #(
     input  logic rst_n,
 
     // AXI4-Stream slave (commands from App)
-    axi_stream_if.slave instruction_axis,
+    input  logic [DATA_WIDTH-1:0] instruction_axis_tdata,
+    input  logic                  instruction_axis_tvalid,
+    output logic                  instruction_axis_tready,
+    input  logic                  instruction_axis_tlast,
 
     // AXI4-Stream master (to App - data RECEIVED)
-    axi_stream_if.master response_axis,
+    output logic [DATA_WIDTH-1:0] response_axis_tdata,
+    output logic                  response_axis_tvalid,
+    input  logic                  response_axis_tready,
+    output logic                  response_axis_tlast,
 
     // TCP sender interface
     output logic               sender_start,
@@ -76,13 +82,13 @@ module tcp_brain #(
             timer             <= 0;
             num_attempts      <= 0;
             send_dup_ack      <= 0;
-            instruction_axis.tready <= 0;
+            instruction_axis_tready <= 0;
         end else begin
 
             // --- Default Assignments (prevent latches/multi-drivers) ---
             state_r                 <= state_r;
             sender_start            <= 0;
-            instruction_axis.tready <= 0;
+            instruction_axis_tready <= 0;
             send_dup_ack            <= 0;
             meta_ready              <= 0;
 
@@ -93,9 +99,9 @@ module tcp_brain #(
                 //-----------------------------------------
                 S_CLOSED: begin
                     // Ready to accept a "connect" command
-                    instruction_axis.tready <= 1;
+                    instruction_axis_tready <= 1;
 
-                    if (instruction_axis.tvalid && instruction_axis.tdata == CMD_CONNECT) begin
+                    if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CONNECT) begin
                         // Latch connection info and ISN
                         sender_info.src_mac <= in_info.src_mac;
                         sender_info.dst_mac <= in_info.dst_mac;
@@ -136,17 +142,17 @@ module tcp_brain #(
                     // Wait for the tcp_sender module to finish sending the packet
                     if (!sender_busy) begin
                         state_r <= S_NOTIFY_FPGA; // Go to the state we saved
-                        response_axis.tvalid <= 1;
-                        response_axis.tdata  <= {4'b0, state_n}; // Indicate packet sent
-                        response_axis.tlast  <= 1;
+                        response_axis_tvalid <= 1;
+                        response_axis_tdata  <= {4'b0, state_n}; // Indicate packet sent
+                        response_axis_tlast  <= 1;
                         sender_start         <= 0;
                     end
                     base_valid <= 0;
                 end
 
                 S_NOTIFY_FPGA: begin
-                    if (response_axis.tready) begin
-                        response_axis.tvalid <= 0;
+                    if (response_axis_tready) begin
+                        response_axis_tvalid <= 0;
                         state_r <= state_n;
                     end
                 end
@@ -210,7 +216,7 @@ module tcp_brain #(
                     // Ready for data from App *if* sender is free
 
                     // Ready for "close" command
-                    instruction_axis.tready <= 1;
+                    instruction_axis_tready <= 1;
                     meta_ready<= 0;
 
                     if (meta_valid&~meta_ready) begin
@@ -258,7 +264,7 @@ module tcp_brain #(
                             end
                         end // end else (data/ack)
                     end // end if(meta_valid)
-                    else if (instruction_axis.tvalid && instruction_axis.tdata == CMD_SEND) begin
+                    else if (instruction_axis_tvalid && instruction_axis_tdata == CMD_SEND) begin
                         // --- Priority 2: Handle Outgoing Data from App ---
                         // (Assuming sender module will read from s_axis based on payload_len)
                         // (This assumes we know the length *before* sending)
@@ -276,7 +282,7 @@ module tcp_brain #(
                         sender_info.tcp_checksum <= in_info.tcp_checksum; // No payload, checksum not needed
                         state_r <= S_PREPARE_SEND;
                     end
-                    else if (instruction_axis.tvalid && instruction_axis.tdata == CMD_CLOSE) begin
+                    else if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CLOSE) begin
                         // --- Priority 3: Handle Active Close (App wants to close) ---
                         sender_info.seq_num    <= client_seq_num;
                         sender_info.ack_num    <= server_seq_num;
@@ -326,9 +332,9 @@ module tcp_brain #(
                 S_CLOSE_WAIT: begin
                     // Server sent FIN, we ACKed.
                     // We now wait for our *own* application to be ready to close.
-                    instruction_axis.tready <= 1;
+                    instruction_axis_tready <= 1;
 
-                    if (instruction_axis.tvalid && instruction_axis.tdata == CMD_CLOSE) begin
+                    if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CLOSE) begin
                         // App is done. Send our FIN.
                         sender_info.seq_num    <= client_seq_num;
                         sender_info.ack_num    <= server_seq_num;
