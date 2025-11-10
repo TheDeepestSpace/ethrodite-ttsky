@@ -121,7 +121,7 @@ module ethernet_ipv4_handler #(
 
         // IPv4 header
         if (byte_offset_r >= ETH_HEADER_BYTES) begin
-            automatic int rel = byte_offset_r - ETH_HEADER_BYTES;
+            int rel = byte_offset_r - ETH_HEADER_BYTES;
             case (rel)
                 `IPV4_VERSION_IHL_OFFSET: begin
                     ipv4_version_n = s_axis.tdata[7:4];
