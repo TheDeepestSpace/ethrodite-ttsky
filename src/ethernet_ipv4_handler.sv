@@ -27,13 +27,15 @@ module ethernet_ipv4_handler #(
     output logic        meta_ethertype_ok
 );
 
-    localparam int ETH_HEADER_BYTES = 14;
+    localparam [15:0] ETH_HEADER_BYTES = 14;
 
     typedef enum logic [3:0] {S_HEADER, S_FORWARD, S_CRC32, S_WAIT, S_DROP} state_e;
     state_e state_r, state_n;
 
     // Header registers
     logic [15:0] byte_offset_r, byte_offset_n;
+    logic [15:0] rel;  // temporary variable for relative offset
+    logic [16:0] sum16_ipv4;  // 17-bit to handle carries in checksum calculation
     logic [47:0] dst_mac_r, dst_mac_n;
     logic [47:0] src_mac_r, src_mac_n;
     logic [15:0] ethertype_r, ethertype_n;
@@ -121,18 +123,18 @@ module ethernet_ipv4_handler #(
 
         // IPv4 header
         if (byte_offset_r >= ETH_HEADER_BYTES) begin
-            int rel = byte_offset_r - ETH_HEADER_BYTES;
+            rel = byte_offset_r - ETH_HEADER_BYTES;
             case (rel)
                 `IPV4_VERSION_IHL_OFFSET: begin
                     ipv4_version_n = s_axis.tdata[7:4];
                     ipv4_ihl_n     = s_axis.tdata[3:0];
                     header_bytes_needed_n = ipv4_ihl_n * 4;
                 end
-                `IPV4_TOTAL_LENGTH_MSB_OFFSET: 
+                `IPV4_TOTAL_LENGTH_MSB_OFFSET:
                 begin
                     ipv4_total_length_n[15:8] = s_axis.tdata;
                 end
-                `IPV4_TOTAL_LENGTH_LSB_OFFSET: 
+                `IPV4_TOTAL_LENGTH_LSB_OFFSET:
                 begin
                     ipv4_total_length_n[7:0]  = s_axis.tdata;
                 end
@@ -186,12 +188,11 @@ module ethernet_ipv4_handler #(
         case (state_r)
             S_HEADER: begin
                 if (header_bytes_accum_n == header_bytes_needed_n && header_bytes_needed_n != 0) begin
-                    logic [15:0] sum16_ipv4;
-                    sum16_ipv4 = chksum_acc_n[15:0] + (chksum_acc_n >> 16);
-                    sum16_ipv4 = sum16_ipv4[15:0] + (sum16_ipv4 >> 16);
+                    sum16_ipv4 = chksum_acc_n[15:0] + chksum_acc_n[31:16];
+                    sum16_ipv4 = sum16_ipv4[15:0] + {16'b0, sum16_ipv4[16]};
 
                     // Valid checksum if ones-complement sum == 0xFFFF
-                    if (sum16_ipv4 == 16'hFFFF)
+                    if (sum16_ipv4[15:0] == 16'hFFFF)
                         state_n = S_FORWARD;
                     else
                         state_n = S_DROP;
@@ -199,13 +200,13 @@ module ethernet_ipv4_handler #(
             end
 
             S_FORWARD: begin
-                // Increment forwarded bytes   
+                // Increment forwarded bytes
                 forwarded_bytes_n = forwarded_bytes_r + 1;
 
                 // Set next-cycle tvalid when forwarding bytes
                 m_axis_tvalid_n =  s_axis.tvalid;
                 // Done forwarding?
-                if (forwarded_bytes_n == ipv4_total_length_r - ipv4_ihl_r*4 ) begin
+                if (forwarded_bytes_n == ipv4_total_length_r - {12'b0, ipv4_ihl_r}*4 ) begin
                     m_axis_tlast_n = 1;
                     state_n = S_CRC32;
                 end
@@ -214,19 +215,19 @@ module ethernet_ipv4_handler #(
                 end
             end
             S_DROP: begin
-                // Increment forwarded bytes   
+                // Increment forwarded bytes
                 forwarded_bytes_n = forwarded_bytes_r + 1;
 
                 // Done forwarding?
-                if (forwarded_bytes_n == ipv4_total_length_r - ipv4_ihl_r*4 +4) begin
+                if (forwarded_bytes_n == ipv4_total_length_r - {12'b0, ipv4_ihl_r}*4 +4) begin
                     state_n = S_HEADER;
                 end
             end
-        S_CRC32:begin                    
+        S_CRC32:begin
                 // Increment forwarded bytes
                 forwarded_bytes_n = forwarded_bytes_r + 1;
-                
-                if (forwarded_bytes_n -(ipv4_total_length_r - ipv4_ihl_r*4) == `CRC32_WIDTH) begin
+
+                if (forwarded_bytes_n -(ipv4_total_length_r - {12'b0, ipv4_ihl_r}*4) == `CRC32_WIDTH) begin
                     state_n = S_WAIT;
                 end
                 else
@@ -251,7 +252,7 @@ module ethernet_ipv4_handler #(
             odd_byte_valid_r <= 0; odd_byte_r <= 0;
             header_bytes_needed_r <= 0; header_bytes_accum_r <= 0;
             forwarded_bytes_r   <= 0;
-            
+
             chksum_acc_r <= '0;
 
             meta_valid          <= 0;

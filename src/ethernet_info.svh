@@ -111,7 +111,7 @@
 `define MAC_ADDR_BYTES             6
 `define IPV4_ADDR_BYTES            4
 
-//TCP 
+//TCP
 `define IPV4_TCP_PROTO 16'd6
 
 `define TCP_SRC_PORT_BASE         0     // 16 bits
@@ -133,5 +133,55 @@
 `define TCP_FLAG_RST  2
 `define TCP_FLAG_SYN  1
 `define TCP_FLAG_FIN  0
+
+typedef struct packed {
+  logic [47:0] src_mac;
+  logic [47:0] dst_mac;
+  logic [31:0] src_ip;
+  logic [31:0] dst_ip;
+  logic [15:0] src_port;
+  logic [15:0] dst_port;
+  logic [31:0] seq_num;
+  logic [31:0] ack_num;
+  logic [7:0]  tcp_flags;
+  logic [15:0] window;
+  logic [15:0] payload_len;
+  logic [15:0] tcp_checksum;  // if payload present
+} tcp_packet_info_s;
+
+
+// TCP Packet Info Struct
+typedef struct packed {
+    logic [47:0] src_mac;
+    logic [47:0] dst_mac;
+    logic [31:0] src_ip;
+    logic [31:0] dst_ip;
+    logic [15:0] src_port;
+    logic [15:0] dst_port;
+    logic [15:0] payload_len;  // bytes
+    logic [15:0] tcp_checksum; // precomputed externally if payload present
+} tcp_command_info;
+
+typedef enum logic [3:0] {
+    S_CLOSED,
+    S_START_SEND,
+    S_PREPARE_SEND,
+    S_WAITING_TO_SEND,
+    S_NOTIFY_FPGA,
+    S_SYN_SENT,
+    S_ESTABLISHED,
+    S_WAIT_FOR_ACK,
+    S_CLOSE_WAIT,     // Passive Close (Server sent FIN)
+    S_LAST_ACK,       // Passive Close
+    S_FIN_WAIT_1,     // Active Close (We sent FIN)
+    S_FIN_WAIT_2,     // Active Close
+    S_TIME_WAIT       // Active Close
+} state_e;
+
+typedef enum logic [1:0] {
+    STATE_CMD_CLOSE,
+    STATE_CMD_CONNECT,
+    STATE_CMD_SEND
+} state_cmd;
 
 `endif // ETHERNET_INFO_SVH
