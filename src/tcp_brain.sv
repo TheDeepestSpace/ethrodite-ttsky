@@ -26,8 +26,15 @@ module tcp_brain #(
     output tcp_packet_info_s   sender_info,
     input  logic               sender_busy,
 
-    // Connection info (latched on instruction)
-    input  tcp_command_info     in_info,
+    // Connection info (latched on instruction) - flattened for Yosys compatibility
+    input  logic [47:0] in_info_src_mac,
+    input  logic [47:0] in_info_dst_mac,
+    input  logic [31:0] in_info_src_ip,
+    input  logic [31:0] in_info_dst_ip,
+    input  logic [15:0] in_info_src_port,
+    input  logic [15:0] in_info_dst_port,
+    input  logic [15:0] in_info_payload_len,
+    input  logic [15:0] in_info_tcp_checksum,
 
     input  logic [31:0]         window_size,  // remaining byte space
     input  logic [31:0]         expected_ack,
@@ -103,12 +110,12 @@ module tcp_brain #(
 
                     if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CONNECT) begin
                         // Latch connection info and ISN
-                        sender_info.src_mac <= in_info.src_mac;
-                        sender_info.dst_mac <= in_info.dst_mac;
-                        sender_info.src_port <= in_info.src_port;
-                        sender_info.dst_port <= in_info.dst_port;
-                        sender_info.src_ip   <= in_info.src_ip;
-                        sender_info.dst_ip   <= in_info.dst_ip;
+                        sender_info.src_mac <= in_info_src_mac;
+                        sender_info.dst_mac <= in_info_dst_mac;
+                        sender_info.src_port <= in_info_src_port;
+                        sender_info.dst_port <= in_info_dst_port;
+                        sender_info.src_ip   <= in_info_src_ip;
+                        sender_info.dst_ip   <= in_info_dst_ip;
                         sender_info.window   <= window_size[15:0]; // Our receive window
 
                         // Prepare SYN packet fields and schedule a one-cycle prepare
@@ -268,18 +275,18 @@ module tcp_brain #(
                         // --- Priority 2: Handle Outgoing Data from App ---
                         // (Assuming sender module will read from s_axis based on payload_len)
                         // (This assumes we know the length *before* sending)
-                        // (This logic assumes `in_info.payload_len` is updated by the app)
+                        // (This logic assumes `in_info_payload_len` is updated by the app)
 
                         sender_info.seq_num    <= client_seq_num;
                         sender_info.ack_num    <= server_seq_num; // Piggyback ACK
                         sender_info.tcp_flags  <= (1<<`TCP_FLAG_ACK) | (1<<`TCP_FLAG_PSH);
-                        sender_info.payload_len <= in_info.payload_len;
+                        sender_info.payload_len <= in_info_payload_len;
 
-                        client_seq_num <= client_seq_num + {16'b0, in_info.payload_len};
+                        client_seq_num <= client_seq_num + {16'b0, in_info_payload_len};
 
                         // prepare send so sender_info is stable for one cycle
                         state_n <= S_ESTABLISHED;
-                        sender_info.tcp_checksum <= in_info.tcp_checksum; // No payload, checksum not needed
+                        sender_info.tcp_checksum <= in_info_tcp_checksum; // No payload, checksum not needed
                         state_r <= S_PREPARE_SEND;
                     end
                     else if (instruction_axis_tvalid && instruction_axis_tdata == CMD_CLOSE) begin

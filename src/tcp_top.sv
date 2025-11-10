@@ -41,8 +41,15 @@ module tcp_top(
     output logic       s_app_axis_tready,
     input  logic       s_app_axis_tlast,
 
-    // Connection info (latched on instruction)
-    input  tcp_command_info     in_info
+    // Connection info (latched on instruction) - flattened for Yosys compatibility
+    input  logic [47:0] in_info_src_mac,
+    input  logic [47:0] in_info_dst_mac,
+    input  logic [31:0] in_info_src_ip,
+    input  logic [31:0] in_info_dst_ip,
+    input  logic [15:0] in_info_src_port,
+    input  logic [15:0] in_info_dst_port,
+    input  logic [15:0] in_info_payload_len,
+    input  logic [15:0] in_info_tcp_checksum
 );
 
     // -----------------
@@ -127,10 +134,17 @@ module tcp_top(
         .response_axis_tvalid   (response_axis_tvalid),
         .response_axis_tready   (response_axis_tready),
         .response_axis_tlast    (response_axis_tlast),
-        .sender_start    (sender_start),
-        .sender_info     (sender_info),
-        .sender_busy     (sender_busy),
-        .in_info         (in_info),
+        .sender_start       (sender_start),
+        .sender_info        (sender_info),
+        .sender_busy        (sender_busy),
+        .in_info_src_mac    (in_info_src_mac),
+        .in_info_dst_mac    (in_info_dst_mac),
+        .in_info_src_ip     (in_info_src_ip),
+        .in_info_dst_ip     (in_info_dst_ip),
+        .in_info_src_port   (in_info_src_port),
+        .in_info_dst_port   (in_info_dst_port),
+        .in_info_payload_len(in_info_payload_len),
+        .in_info_tcp_checksum(in_info_tcp_checksum),
         .window_size     (window_size),
         .expected_ack    (expected_ack),
         .ack_done        (ack_done),

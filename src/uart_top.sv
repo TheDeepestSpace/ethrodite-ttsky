@@ -62,8 +62,15 @@ module uart_top #(
     logic                  app_data_tready;
     logic                  app_data_tlast;
 
-    // TCP connection info (configured via UART commands)
-    tcp_command_info conn_info;
+    // TCP connection info (configured via UART commands) - flattened for Yosys compatibility
+    logic [47:0] conn_info_src_mac;
+    logic [47:0] conn_info_dst_mac;
+    logic [31:0] conn_info_src_ip;
+    logic [31:0] conn_info_dst_ip;
+    logic [15:0] conn_info_src_port;
+    logic [15:0] conn_info_dst_port;
+    logic [15:0] conn_info_payload_len;
+    logic [15:0] conn_info_tcp_checksum;
 
     // -------------------------------
     // TCP stack instantiation
@@ -95,7 +102,14 @@ module uart_top #(
         .s_app_axis_tvalid      (app_data_tvalid),
         .s_app_axis_tready      (app_data_tready),
         .s_app_axis_tlast       (app_data_tlast),
-        .in_info(conn_info)
+        .in_info_src_mac        (conn_info_src_mac),
+        .in_info_dst_mac        (conn_info_dst_mac),
+        .in_info_src_ip         (conn_info_src_ip),
+        .in_info_dst_ip         (conn_info_dst_ip),
+        .in_info_src_port       (conn_info_src_port),
+        .in_info_dst_port       (conn_info_dst_port),
+        .in_info_payload_len    (conn_info_payload_len),
+        .in_info_tcp_checksum   (conn_info_tcp_checksum)
     );
 
     // -------------------------------
@@ -126,7 +140,14 @@ module uart_top #(
         .payload_to_be_sent_axis_tvalid   (app_data_tvalid),
         .payload_to_be_sent_axis_tready   (app_data_tready),
         .payload_to_be_sent_axis_tlast    (app_data_tlast),
-        .out_info(conn_info),
+        .out_info_src_mac                 (conn_info_src_mac),
+        .out_info_dst_mac                 (conn_info_dst_mac),
+        .out_info_src_ip                  (conn_info_src_ip),
+        .out_info_dst_ip                  (conn_info_dst_ip),
+        .out_info_src_port                (conn_info_src_port),
+        .out_info_dst_port                (conn_info_dst_port),
+        .out_info_payload_len             (conn_info_payload_len),
+        .out_info_tcp_checksum            (conn_info_tcp_checksum),
 
         // UART output back to physical UART
         .uart_out_tdata (uart_out_tdata),

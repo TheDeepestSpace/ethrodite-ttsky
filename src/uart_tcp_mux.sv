@@ -31,8 +31,15 @@ module uart_tcp_mux #(
     input  logic                  payload_to_be_sent_axis_tready,
     output logic                  payload_to_be_sent_axis_tlast,
     
-    // Connection info (latched on instruction)
-    output tcp_command_info     out_info,
+    // Connection info (latched on instruction) - flattened for Yosys compatibility
+    output logic [47:0] out_info_src_mac,
+    output logic [47:0] out_info_dst_mac,
+    output logic [31:0] out_info_src_ip,
+    output logic [31:0] out_info_dst_ip,
+    output logic [15:0] out_info_src_port,
+    output logic [15:0] out_info_dst_port,
+    output logic [15:0] out_info_payload_len,
+    output logic [15:0] out_info_tcp_checksum,
 
     // UART output - master
     output logic [DATA_WIDTH-1:0] uart_out_tdata,
@@ -227,48 +234,48 @@ module uart_tcp_mux #(
         S_LOAD_INFO: begin
           case (uart_rx_data)
             // src_mac[47:0]
-            0: out_info.src_mac[47:40] <= uart_extra_data;
-            1: out_info.src_mac[39:32] <= uart_extra_data;
-            2: out_info.src_mac[31:24] <= uart_extra_data;
-            3: out_info.src_mac[23:16] <= uart_extra_data;
-            4: out_info.src_mac[15:8] <= uart_extra_data;
-            5: out_info.src_mac[7:0] <= uart_extra_data;
+            0: out_info_src_mac[47:40] <= uart_extra_data;
+            1: out_info_src_mac[39:32] <= uart_extra_data;
+            2: out_info_src_mac[31:24] <= uart_extra_data;
+            3: out_info_src_mac[23:16] <= uart_extra_data;
+            4: out_info_src_mac[15:8] <= uart_extra_data;
+            5: out_info_src_mac[7:0] <= uart_extra_data;
 
             // dst_mac[47:0]
-            6:  out_info.dst_mac[47:40] <= uart_extra_data;
-            7:  out_info.dst_mac[39:32] <= uart_extra_data;
-            8:  out_info.dst_mac[31:24] <= uart_extra_data;
-            9:  out_info.dst_mac[23:16] <= uart_extra_data;
-            10: out_info.dst_mac[15:8] <= uart_extra_data;
-            11: out_info.dst_mac[7:0] <= uart_extra_data;
+            6:  out_info_dst_mac[47:40] <= uart_extra_data;
+            7:  out_info_dst_mac[39:32] <= uart_extra_data;
+            8:  out_info_dst_mac[31:24] <= uart_extra_data;
+            9:  out_info_dst_mac[23:16] <= uart_extra_data;
+            10: out_info_dst_mac[15:8] <= uart_extra_data;
+            11: out_info_dst_mac[7:0] <= uart_extra_data;
 
             // src_ip[31:0]
-            12: out_info.src_ip[31:24] <= uart_extra_data;
-            13: out_info.src_ip[23:16] <= uart_extra_data;
-            14: out_info.src_ip[15:8] <= uart_extra_data;
-            15: out_info.src_ip[7:0] <= uart_extra_data;
+            12: out_info_src_ip[31:24] <= uart_extra_data;
+            13: out_info_src_ip[23:16] <= uart_extra_data;
+            14: out_info_src_ip[15:8] <= uart_extra_data;
+            15: out_info_src_ip[7:0] <= uart_extra_data;
 
             // dst_ip[31:0]
-            16: out_info.dst_ip[31:24] <= uart_extra_data;
-            17: out_info.dst_ip[23:16] <= uart_extra_data;
-            18: out_info.dst_ip[15:8] <= uart_extra_data;
-            19: out_info.dst_ip[7:0] <= uart_extra_data;
+            16: out_info_dst_ip[31:24] <= uart_extra_data;
+            17: out_info_dst_ip[23:16] <= uart_extra_data;
+            18: out_info_dst_ip[15:8] <= uart_extra_data;
+            19: out_info_dst_ip[7:0] <= uart_extra_data;
 
             // src_port[15:0]
-            20: out_info.src_port[15:8] <= uart_extra_data;
-            21: out_info.src_port[7:0] <= uart_extra_data;
+            20: out_info_src_port[15:8] <= uart_extra_data;
+            21: out_info_src_port[7:0] <= uart_extra_data;
 
             // dst_port[15:0]
-            22: out_info.dst_port[15:8] <= uart_extra_data;
-            23: out_info.dst_port[7:0] <= uart_extra_data;
+            22: out_info_dst_port[15:8] <= uart_extra_data;
+            23: out_info_dst_port[7:0] <= uart_extra_data;
 
             // payload_len[15:0]
-            24: out_info.payload_len[15:8] <= uart_extra_data;
-            25: out_info.payload_len[7:0] <= uart_extra_data;
+            24: out_info_payload_len[15:8] <= uart_extra_data;
+            25: out_info_payload_len[7:0] <= uart_extra_data;
 
             // tcp_checksum[15:0]
-            26: out_info.tcp_checksum[15:8] <= uart_extra_data;
-            27: out_info.tcp_checksum[7:0] <= uart_extra_data;
+            26: out_info_tcp_checksum[15:8] <= uart_extra_data;
+            27: out_info_tcp_checksum[7:0] <= uart_extra_data;
 
             default: ;  // ignore out-of-range
           endcase
