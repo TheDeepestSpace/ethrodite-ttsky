@@ -85,6 +85,7 @@ module ethernet_ipv4_handler #(
         // Defaults
         state_n = state_r;
         byte_offset_n = byte_offset_r;
+        rel = '0;  // Default to avoid latch inference
         dst_mac_n = dst_mac_r; src_mac_n = src_mac_r;
         ethertype_n = ethertype_r; ethertype_ok_n = ethertype_ok_r;
         ipv4_version_n = ipv4_version_r; ipv4_ihl_n = ipv4_ihl_r;
