@@ -29,6 +29,7 @@ project:
     - "tt_um_top.sv"
     - "UART_wrapper.sv"
     - "uart_top.sv"
+    - "uart_tcp_mux.sv"
 
 # The pinout of your project.
 pinout:
