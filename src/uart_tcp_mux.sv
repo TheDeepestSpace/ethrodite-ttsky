@@ -165,33 +165,27 @@ module uart_tcp_mux #(
           if (uart_in_tvalid && uart_in_tready) begin
             case (uart_in_tdata)
               PARROT: begin
-                $display("got parrot");
                 uart_tx_data <= uart_in_tdata;
                 uart_header <= PARROT;
                 state_r <= S_SEND_HEADER;
               end
               ETH_FRAME_IN: begin
-                $display("got eth frame");
                 state_r <= S_GET_BYTE;
                 state_n <= S_SEND_TO_ETH;
               end
               INSTRUCTION: begin
-                $display("got instruction");
                 state_r <= S_GET_BYTE;
                 state_n <= S_SEND_TO_BRAIN;
               end
               PAYLOAD_COMING: begin
-                $display("got payload");
                 state_r <= S_GET_BYTE;
                 state_n <= S_SEND_TO_TCP_SENDER;
               end
               INFO: begin
-                $display("got info");
                 state_r <= S_GET_BYTE;
                 state_n <= S_GET_DATA;
               end
               default: begin
-                $display("got garbage: %h", uart_in_tdata);
                 uart_tx_data <= uart_in_tdata;
                 uart_header <= PARROT;
                 state_r <= S_SEND_HEADER;

@@ -86,7 +86,6 @@ module uart_axi_bridge #(
             // When UART RX finishes receiving a byte
             if (rx_done) begin
                 uart_out_tdata  <= rx_data;
-                $display("sending %h", rx_data);
                 uart_out_tvalid <= 1'b1;
             end
             // Clear valid when mux accepts it
