@@ -71,7 +71,19 @@ module tcp_top(
     // Control / metadata signals
     // -----------------
     logic                 sender_start;
-    tcp_packet_info_s     sender_info; // type defined in tcp_sender.sv
+    // Flattened sender_info for Yosys compatibility
+    logic [47:0] sender_info_src_mac;
+    logic [47:0] sender_info_dst_mac;
+    logic [31:0] sender_info_src_ip;
+    logic [31:0] sender_info_dst_ip;
+    logic [15:0] sender_info_src_port;
+    logic [15:0] sender_info_dst_port;
+    logic [31:0] sender_info_seq_num;
+    logic [31:0] sender_info_ack_num;
+    logic [7:0]  sender_info_tcp_flags;
+    logic [15:0] sender_info_window;
+    logic [15:0] sender_info_payload_len;
+    logic [15:0] sender_info_tcp_checksum;
     logic                 sender_busy;
 
     // window/sequence tracking (from tcp_brain)
@@ -134,9 +146,20 @@ module tcp_top(
         .response_axis_tvalid   (response_axis_tvalid),
         .response_axis_tready   (response_axis_tready),
         .response_axis_tlast    (response_axis_tlast),
-        .sender_start       (sender_start),
-        .sender_info        (sender_info),
-        .sender_busy        (sender_busy),
+        .sender_start            (sender_start),
+        .sender_info_src_mac     (sender_info_src_mac),
+        .sender_info_dst_mac     (sender_info_dst_mac),
+        .sender_info_src_ip      (sender_info_src_ip),
+        .sender_info_dst_ip      (sender_info_dst_ip),
+        .sender_info_src_port    (sender_info_src_port),
+        .sender_info_dst_port    (sender_info_dst_port),
+        .sender_info_seq_num     (sender_info_seq_num),
+        .sender_info_ack_num     (sender_info_ack_num),
+        .sender_info_tcp_flags   (sender_info_tcp_flags),
+        .sender_info_window      (sender_info_window),
+        .sender_info_payload_len (sender_info_payload_len),
+        .sender_info_tcp_checksum(sender_info_tcp_checksum),
+        .sender_busy             (sender_busy),
         .in_info_src_mac    (in_info_src_mac),
         .in_info_dst_mac    (in_info_dst_mac),
         .in_info_src_ip     (in_info_src_ip),
@@ -210,7 +233,18 @@ module tcp_top(
         .clk   (clk),
         .rst_n (rst_n),
         .start (sender_start),
-        .i_pkt (sender_info),
+        .i_pkt_src_mac     (sender_info_src_mac),
+        .i_pkt_dst_mac     (sender_info_dst_mac),
+        .i_pkt_src_ip      (sender_info_src_ip),
+        .i_pkt_dst_ip      (sender_info_dst_ip),
+        .i_pkt_src_port    (sender_info_src_port),
+        .i_pkt_dst_port    (sender_info_dst_port),
+        .i_pkt_seq_num     (sender_info_seq_num),
+        .i_pkt_ack_num     (sender_info_ack_num),
+        .i_pkt_tcp_flags   (sender_info_tcp_flags),
+        .i_pkt_window      (sender_info_window),
+        .i_pkt_payload_len (sender_info_payload_len),
+        .i_pkt_tcp_checksum(sender_info_tcp_checksum),
         .s_axis_tdata (s_app_axis_tdata),
         .s_axis_tvalid(s_app_axis_tvalid),
         .s_axis_tready(s_app_axis_tready),
