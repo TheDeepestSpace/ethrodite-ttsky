@@ -16,7 +16,13 @@ module tt_um_top (
   // All output pins must be assigned. If not used, assign to 0.
 
   // List all unused inputs to prevent warnings
-  wire _unused = &{ena, clk, rst_n, 1'b0};
+// Tie all unused outputs to 0
+  assign uo_out   = 8'b0;          // nothing on dedicated outputs
+  assign uio_out[7:1]  = '0; // only bit 0 is used by UART
+  assign uio_oe   = 8'b0;          // nothing else enabled
+
+  // Tie unused inputs to a dummy wire to avoid warnings
+  wire _unused = &{ui_in, uio_in[7:1], ena, clk, rst_n};
 
   tt_um_tcp_top um_tcp_top (
       .clk(clk),
