@@ -118,9 +118,6 @@ module tcp_handler #(
                 S_FORWARD: begin
                     // Default tkeep = all bytes valid
                     forwarded_bytes_n = forwarded_bytes_n + 1;
-
-                    $display("outputting %h", s_axis.tdata);
-
                     m_axis_valid_n         = 1;
 
                     if (s_axis.tlast && s_axis.tvalid) begin

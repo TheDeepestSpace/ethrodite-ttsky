@@ -37,12 +37,6 @@ module tcp_reorder_buffer #(
     // This will be one dual-port SRAM macro.
     logic [15:0] combined_mem [0:PACKET_DEPTH-1];
 
-    // --- Port A (Read-Write) ---
-    logic [ADDR_BITS-1:0] sram_a_addr;
-    logic [15:0]          sram_a_din;
-    logic                 sram_a_we;
-    // We don't use the read output of Port A
-
     // ---------- control regs ----------
     logic [SEQ_BITS-1:0] base_seq_reg;
     logic                base_defined;
@@ -57,14 +51,6 @@ module tcp_reorder_buffer #(
 
     typedef enum logic [0:0] {S_READ, S_SEND} state_e;
     state_e state_r;
-    
-    // Simulate the synchronous 1RW1R SRAM
-    // Port A (RW)
-    always_ff @(posedge clk) begin
-        if (sram_a_we) begin
-            combined_mem[sram_a_addr] <= sram_a_din;
-        end
-    end
 
     // ---------- Combinatorial Logic ----------
     logic s_axis_is_writing;
@@ -119,12 +105,13 @@ module tcp_reorder_buffer #(
                 prev_seq   <= seq_start;
                 write_addr <= (seq_start - base_seq_reg) % PACKET_DEPTH;
             end else if (s_axis_is_writing) begin
-                sram_a_we   = 1'b1;
-                sram_a_addr = write_addr;
-                sram_a_din  = {7'b0, s_axis.tdata, 1'b1}; // {unused, data, valid}
                 write_addr <= (write_addr + 1) % PACKET_DEPTH;
-                read_data_reg <= (write_addr == (read_raddr+1) % PACKET_DEPTH )? sram_a_din : combined_mem[read_raddr+1]; 
+                if (write_addr == (read_raddr+1) % PACKET_DEPTH)
+                    read_data_reg <= {7'b0, s_axis.tdata, 1'b1};
+                else 
+                    read_data_reg <= combined_mem[read_raddr+1]; 
                 used_bytes <= used_bytes+1;
+                combined_mem[write_addr] <= {7'b0, s_axis.tdata, 1'b1};
                 state_r <= S_READ;
             end else if (state_r == S_READ) begin
                 read_data_reg  <= combined_mem[read_raddr]; 
@@ -134,9 +121,8 @@ module tcp_reorder_buffer #(
                 m_axis.tvalid <= 1;
                 m_axis.tdata  <= read_data_reg[DATA_MSB_IDX:DATA_LSB_IDX];
                 expected_seq_reg <= expected_seq_reg + 1;
-                sram_a_addr = read_raddr;
                 state_r <= S_READ;
-                sram_a_din  = '0; // {unused, data, valid}
+                combined_mem[read_raddr] <= '0;
                 read_raddr <= (read_raddr + 1) % PACKET_DEPTH;
                 used_bytes <= used_bytes-1;
             end

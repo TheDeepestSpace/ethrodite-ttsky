@@ -93,7 +93,6 @@ module tcp_sender #(
         case (state)
             ST_IDLE: begin
                 if (start) begin
-                    $display("starting");
                     pkt_n       = i_pkt;
                     byte_cnt_n  = 0;
                     crc32_n     = 32'hFFFFFFFF;

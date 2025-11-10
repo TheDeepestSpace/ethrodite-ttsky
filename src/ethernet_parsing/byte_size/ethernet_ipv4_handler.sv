@@ -191,11 +191,10 @@ module ethernet_ipv4_handler #(
                     sum16_ipv4 = sum16_ipv4[15:0] + (sum16_ipv4 >> 16);
 
                     // Valid checksum if ones-complement sum == 0xFFFF
-                    $display("sum16 is %h", sum16_ipv4);
                     if (sum16_ipv4 == 16'hFFFF)
                         state_n = S_FORWARD;
                     else
-                        state_n = S_FORWARD;
+                        state_n = S_DROP;
                 end
             end
 
@@ -217,8 +216,6 @@ module ethernet_ipv4_handler #(
             S_DROP: begin
                 // Increment forwarded bytes   
                 forwarded_bytes_n = forwarded_bytes_r + 1;
-
-                $display("dropping");
 
                 // Done forwarding?
                 if (forwarded_bytes_n == ipv4_total_length_r - ipv4_ihl_r*4 +4) begin
@@ -242,8 +239,6 @@ module ethernet_ipv4_handler #(
     // -----------------------------------------------------------------
     // Sequential updates
     always_ff @(posedge clk or negedge rst_n) begin
-        if (state_r == S_WAIT)
-            $display("{ETH} waiting");
     if (!rst_n || (state_r == S_WAIT && meta_ready)) begin
             // Reset all state and metadata
             state_r             <= S_HEADER;
@@ -267,7 +262,6 @@ module ethernet_ipv4_handler #(
 
             // clear registered outputs
             m_axis_tlast_r <= 1'b0; m_axis_tdata_r <= '0;
-            $display("{ETH} going back to ready");
         end
         else begin
             // Latch state
