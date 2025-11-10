@@ -1,4 +1,5 @@
 `timescale 1ns/1ps
+`include "axi_stream_if.sv"
 // `include "tcp_top.sv"
 // `include "uart_tcp_mux.sv"
 
