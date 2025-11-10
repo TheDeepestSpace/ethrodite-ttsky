@@ -33,7 +33,7 @@ project:
 # The pinout of your project.
 pinout:
   # Inputs
-  ui[0]: "UART_RX"  # <-- CONNECTED
+  ui[0]: "uart_rx"  # <-- CONNECTED
   ui[1]: ""
   ui[2]: ""
   ui[3]: ""
@@ -43,7 +43,7 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: "UART_TX"  # <-- CONNECTED
+  uo[0]: "uart_tx"  # <-- CONNECTED
   uo[1]: ""
   uo[2]: ""
   uo[3]: ""
