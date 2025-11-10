@@ -88,14 +88,14 @@ module uart_tcp_mux #(
   assign app_response_axis_tready = app_response_tready_i;
 
   // Packet type constants
-  localparam logic [7:0] PARROT = 8'd0;  // send back what we sent them
-  localparam logic [7:0] ETH_FRAME_IN = 8'd1;
-  localparam logic [7:0] ETH_FRAME_OUT = 8'd2;
-  localparam logic [7:0] REMAINING_LAYER = 8'd3;
-  localparam logic [7:0] INSTRUCTION = 8'd4;
-  localparam logic [7:0] BRAIN_STATUS = 8'd5;
-  localparam logic [7:0] PAYLOAD_COMING = 8'd6;
-  localparam logic [7:0] INFO = 8'd7;
+  localparam PARROT = 8'd0;  // send back what we sent them
+  localparam ETH_FRAME_IN = 8'd1;
+  localparam ETH_FRAME_OUT = 8'd2;
+  localparam REMAINING_LAYER = 8'd3;
+  localparam INSTRUCTION = 8'd4;
+  localparam BRAIN_STATUS = 8'd5;
+  localparam PAYLOAD_COMING = 8'd6;
+  localparam INFO = 8'd7;
 
   // UART byte interface
   logic [7:0] uart_rx_data, uart_tx_data, uart_extra_data, uart_header;
@@ -103,18 +103,18 @@ module uart_tcp_mux #(
   logic uart_rx_ready, uart_tx_ready;
 
   // State machine states (using localparam instead of enum for Yosys compatibility)
-  localparam logic [3:0] S_POLL_UART         = 4'd0;
-  localparam logic [3:0] S_SEND_TO_BRAIN     = 4'd1;
-  localparam logic [3:0] S_SEND_TO_ETH       = 4'd2;
-  localparam logic [3:0] S_SEND_TO_TCP_SENDER = 4'd3;
-  localparam logic [3:0] S_LOAD_INFO         = 4'd4;
-  localparam logic [3:0] S_SEND_TO_UART      = 4'd5;
-  localparam logic [3:0] S_POLL_TCP_OUTPUT   = 4'd6;
-  localparam logic [3:0] S_POLL_FRAMES_OUT   = 4'd7;
-  localparam logic [3:0] S_POLL_BRAIN_STATUS = 4'd8;
-  localparam logic [3:0] S_GET_DATA          = 4'd9;
-  localparam logic [3:0] S_GET_BYTE          = 4'd10;
-  localparam logic [3:0] S_SEND_HEADER       = 4'd11;
+  localparam S_POLL_UART         = 4'd0;
+  localparam S_SEND_TO_BRAIN     = 4'd1;
+  localparam S_SEND_TO_ETH       = 4'd2;
+  localparam S_SEND_TO_TCP_SENDER = 4'd3;
+  localparam S_LOAD_INFO         = 4'd4;
+  localparam S_SEND_TO_UART      = 4'd5;
+  localparam S_POLL_TCP_OUTPUT   = 4'd6;
+  localparam S_POLL_FRAMES_OUT   = 4'd7;
+  localparam S_POLL_BRAIN_STATUS = 4'd8;
+  localparam S_GET_DATA          = 4'd9;
+  localparam S_GET_BYTE          = 4'd10;
+  localparam S_SEND_HEADER       = 4'd11;
   
   logic [3:0] state_r, state_n;
 
@@ -147,6 +147,11 @@ module uart_tcp_mux #(
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       state_r <= S_POLL_UART;
+      state_n <= S_POLL_UART;
+      uart_tx_data <= 8'h00;
+      uart_rx_data <= 8'h00;
+      uart_extra_data <= 8'h00;
+      uart_header <= 8'h00;
     end else begin
       case (state_r)
         S_POLL_UART: begin

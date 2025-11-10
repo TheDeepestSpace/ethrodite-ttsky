@@ -33,8 +33,12 @@ module ethernet_ipv4_handler #(
 
     localparam [15:0] ETH_HEADER_BYTES = 14;
 
-    typedef enum logic [3:0] {S_HEADER, S_FORWARD, S_CRC32, S_WAIT, S_DROP} state_e;
-    state_e state_r, state_n;
+    localparam S_HEADER  = 4'd0;
+    localparam S_FORWARD = 4'd1;
+    localparam S_CRC32   = 4'd2;
+    localparam S_WAIT    = 4'd3;
+    localparam S_DROP    = 4'd4;
+    logic [3:0] state_r, state_n;
 
     // Header registers
     logic [15:0] byte_offset_r, byte_offset_n;

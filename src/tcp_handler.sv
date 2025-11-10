@@ -31,8 +31,10 @@ module tcp_handler #(
     output logic [15:0] meta_payload_len
 );
 
-    typedef enum logic [1:0] {S_HEADER, S_FORWARD, S_WAIT} state_e;
-    state_e state_r, state_n;
+    localparam S_HEADER  = 2'd0;
+    localparam S_FORWARD = 2'd1;
+    localparam S_WAIT    = 2'd2;
+    logic [1:0] state_r, state_n;
 
     // Header registers
     logic [15:0] byte_offset_r, byte_offset_n;

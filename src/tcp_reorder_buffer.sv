@@ -53,8 +53,9 @@ module tcp_reorder_buffer #(
     logic                 reset_done;
     logic [15:0]          read_data_reg; // Holds data from Port B
 
-    typedef enum logic [0:0] {S_READ, S_SEND} state_e;
-    state_e state_r;
+    localparam S_READ = 1'b0;
+    localparam S_SEND = 1'b1;
+    logic state_r;
 
     // ---------- Combinatorial Logic ----------
     logic s_axis_is_writing;

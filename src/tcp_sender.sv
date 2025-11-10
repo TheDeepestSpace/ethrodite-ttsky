@@ -37,17 +37,15 @@ module tcp_sender #(
   localparam int TCP_HEADER_BYTES = 20;
   localparam int HEADER_BYTES = ETH_HEADER_BYTES + IPV4_HEADER_BYTES + TCP_HEADER_BYTES;
 
-  typedef enum logic [2:0] {
-    ST_IDLE,
-    ST_SEND_HDR,
-    ST_SEND_PAYLOAD,
-    ST_SEND_CRC
-  } state_e;
+  localparam ST_IDLE         = 3'd0;
+  localparam ST_SEND_HDR     = 3'd1;
+  localparam ST_SEND_PAYLOAD = 3'd2;
+  localparam ST_SEND_CRC     = 3'd3;
 
   // ------------------------------------------------------------
   // Registers
   // ------------------------------------------------------------
-  state_e state, state_n;
+  logic [2:0] state, state_n;
   tcp_packet_info_s pkt_r, pkt_n;
 
   logic [15:0] byte_cnt_r, byte_cnt_n;

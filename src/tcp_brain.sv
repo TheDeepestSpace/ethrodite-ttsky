@@ -51,11 +51,11 @@ module tcp_brain #(
     localparam MAX_FAILED_ATTEMPS = 3;
 
     // --- Application Command Opcodes ---
-    localparam logic [INSTRUCTION_WIDTH-1:0] CMD_CONNECT = 8'h01;
-    localparam logic [INSTRUCTION_WIDTH-1:0] CMD_CLOSE   = 8'h02;
-    localparam logic [INSTRUCTION_WIDTH-1:0] CMD_SEND    = 8'h03;
+    localparam CMD_CONNECT = 8'h01;
+    localparam CMD_CLOSE   = 8'h02;
+    localparam CMD_SEND    = 8'h03;
 
-    state_e state_r, state_n;
+    logic [3:0] state_r, state_n;
 
     // --- TCP State Variables ---
     logic [31:0] client_seq_num;    // Our *next* sequence number to send

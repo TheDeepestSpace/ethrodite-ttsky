@@ -162,26 +162,24 @@ typedef struct packed {
     logic [15:0] tcp_checksum; // precomputed externally if payload present
 } tcp_command_info;
 
-typedef enum logic [3:0] {
-    S_CLOSED,
-    S_START_SEND,
-    S_PREPARE_SEND,
-    S_WAITING_TO_SEND,
-    S_NOTIFY_FPGA,
-    S_SYN_SENT,
-    S_ESTABLISHED,
-    S_WAIT_FOR_ACK,
-    S_CLOSE_WAIT,     // Passive Close (Server sent FIN)
-    S_LAST_ACK,       // Passive Close
-    S_FIN_WAIT_1,     // Active Close (We sent FIN)
-    S_FIN_WAIT_2,     // Active Close
-    S_TIME_WAIT       // Active Close
-} state_e;
+// TCP state machine states (converted from enum for Yosys compatibility)
+localparam S_CLOSED         = 4'd0;
+localparam S_START_SEND     = 4'd1;
+localparam S_PREPARE_SEND   = 4'd2;
+localparam S_WAITING_TO_SEND = 4'd3;
+localparam S_NOTIFY_FPGA    = 4'd4;
+localparam S_SYN_SENT       = 4'd5;
+localparam S_ESTABLISHED    = 4'd6;
+localparam S_WAIT_FOR_ACK   = 4'd7;
+localparam S_CLOSE_WAIT     = 4'd8;  // Passive Close (Server sent FIN)
+localparam S_LAST_ACK       = 4'd9;  // Passive Close
+localparam S_FIN_WAIT_1     = 4'd10; // Active Close (We sent FIN)
+localparam S_FIN_WAIT_2     = 4'd11; // Active Close
+localparam S_TIME_WAIT      = 4'd12; // Active Close
 
-typedef enum logic [1:0] {
-    STATE_CMD_CLOSE,
-    STATE_CMD_CONNECT,
-    STATE_CMD_SEND
-} state_cmd;
+// Command states (converted from enum for Yosys compatibility)
+localparam STATE_CMD_CLOSE   = 2'd0;
+localparam STATE_CMD_CONNECT = 2'd1;
+localparam STATE_CMD_SEND    = 2'd2;
 
 `endif // ETHERNET_INFO_SVH
