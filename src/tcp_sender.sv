@@ -3,8 +3,8 @@
 `include "crc32.sv"
 `include "axi_stream_if.sv"
 
-// `ifndef TCP_PACKET_INFO_S_SV
-// `define TCP_PACKET_INFO_S_SV
+`ifndef TCP_PACKET_INFO_S_SV
+`define TCP_PACKET_INFO_S_SV
 // `endif
 
 module tcp_sender #(
@@ -260,3 +260,5 @@ module tcp_sender #(
   end
 
 endmodule
+
+`endif
