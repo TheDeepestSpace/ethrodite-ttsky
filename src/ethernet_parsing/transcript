@@ -1,0 +1,405 @@
+# do uart_top_sim.do
+# ** Warning: (vlib-34) Library already exists at "work".
+# Compiling SystemVerilog files...
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." axi_stream_if.sv 
+# -- Compiling interface axi_stream_if
+# 
+# Top level modules:
+# 	--none--
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." ethernet_info.svh 
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." uart_core.sv 
+# -- Compiling module uart_core
+# 
+# Top level modules:
+# 	uart_core
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." uart_tcp_mux.sv 
+# -- Compiling module uart_tcp_mux
+# 
+# Top level modules:
+# 	uart_tcp_mux
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." crc32.sv 
+# 
+# Top level modules:
+# 	--none--
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." ethernet_ipv4_handler.sv 
+# -- Compiling interface axi_stream_if
+# -- Compiling package ethernet_ipv4_handler_sv_unit
+# -- Compiling module ethernet_ipv4_handler
+# 
+# Top level modules:
+# 	ethernet_ipv4_handler
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." tcp_handler.sv 
+# -- Compiling interface axi_stream_if
+# -- Compiling module tcp_handler
+# 
+# Top level modules:
+# 	tcp_handler
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." tcp_reorder_buffer.sv 
+# -- Compiling interface axi_stream_if
+# -- Compiling module tcp_reorder_buffer
+# 
+# Top level modules:
+# 	tcp_reorder_buffer
+# End time: 22:47:09 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:09 on Nov 05,2025
+# vlog "+incdir+." tcp_sender.sv 
+# -- Compiling package tcp_sender_sv_unit
+# -- Compiling interface axi_stream_if
+# -- Compiling module tcp_sender
+# 
+# Top level modules:
+# 	tcp_sender
+# End time: 22:47:10 on Nov 05,2025, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:10 on Nov 05,2025
+# vlog "+incdir+." tcp_brain.sv 
+# -- Compiling interface axi_stream_if
+# -- Compiling package tcp_brain_sv_unit
+# -- Compiling module tcp_sender
+# -- Compiling module tcp_brain
+# 
+# Top level modules:
+# 	tcp_sender
+# 	tcp_brain
+# End time: 22:47:10 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:10 on Nov 05,2025
+# vlog "+incdir+." tcp_top.sv 
+# -- Compiling interface axi_stream_if
+# -- Compiling package tcp_top_sv_unit
+# -- Compiling module tcp_sender
+# -- Compiling module tcp_handler
+# -- Compiling module tcp_sender
+# -- Compiling module tcp_brain
+# -- Compiling module tcp_top
+# 
+# Top level modules:
+# 	tcp_top
+# End time: 22:47:10 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:10 on Nov 05,2025
+# vlog "+incdir+." uart_top.sv 
+# -- Compiling interface axi_stream_if
+# -- Compiling package uart_top_sv_unit
+# -- Compiling module tcp_sender
+# -- Compiling module tcp_handler
+# -- Compiling module tcp_sender
+# -- Compiling module tcp_brain
+# -- Compiling module tcp_top
+# -- Compiling module uart_core
+# -- Compiling module uart_tcp_mux
+# -- Compiling module uart_top
+# 
+# Top level modules:
+# 	uart_top
+# End time: 22:47:10 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 10.5b Compiler 2016.10 Oct  5 2016
+# Start time: 22:47:10 on Nov 05,2025
+# vlog "+incdir+." uart_top_tb.sv 
+# -- Compiling interface axi_stream_if
+# -- Compiling module uart_core
+# -- Compiling module uart_tcp_mux
+# -- Compiling package uart_top_tb_sv_unit
+# -- Compiling module tcp_sender
+# -- Compiling module tcp_handler
+# -- Compiling module tcp_sender
+# -- Compiling module tcp_brain
+# -- Compiling module tcp_top
+# -- Compiling module uart_top_tb
+# 
+# Top level modules:
+# 	uart_tcp_mux
+# 	tcp_top
+# 	uart_top_tb
+# End time: 22:47:10 on Nov 05,2025, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# Starting simulation...
+# vsim -t 1ns uart_top_tb 
+# Start time: 22:47:11 on Nov 05,2025
+# Loading sv_std.std
+# Loading work.uart_top_tb_sv_unit
+# Loading work.uart_top_tb
+# Loading work.uart_top_sv_unit
+# Loading work.uart_top
+# Loading work.axi_stream_if
+# Loading work.uart_tcp_mux
+# Loading work.uart_core
+# Loading work.tcp_top
+# Loading work.tcp_brain
+# Loading work.ethernet_ipv4_handler_sv_unit
+# Loading work.ethernet_ipv4_handler
+# Loading work.tcp_handler
+# Loading work.tcp_sender
+# Loading work.tcp_reorder_buffer
+# (vsim-4027) Logging is not supported for Queue item: /uart_top_tb/tx_frame_buffer 
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# configure wave not supported in batch mode
+# Running simulation for 50ms...
+# [TB] 10 HEARTBEAT: tick=0 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Starting UART TCP testbench
+# [TB] Test 1: Send APP CONNECT command
+# [TB] Sending APP command: 0x0001
+# [TB] Sending UART packet: type=0x01 len=2
+# [TB] Sending UART byte: 0x5a
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x02
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Test 2: Send small TCP payload
+# [TB] Sending Ethernet frame via UART: Small HTTP request (payload_len=16)
+# [TB] Sending UART packet: type=0x10 len=74
+# [TB] Sending UART byte: 0x5a
+# [TB] Sending UART byte: 0x10
+# [TB] Sending UART byte: 0x00
+# [TB] 1000010 HEARTBEAT: tick=50000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x4a
+# [TB] Sending UART byte: 0x11
+# [TB] Sending UART byte: 0x22
+# [TB] Sending UART byte: 0x33
+# [TB] Sending UART byte: 0x44
+# [TB] Sending UART byte: 0x55
+# [TB] Sending UART byte: 0x66
+# [TB] Sending UART byte: 0xaa
+# [TB] Sending UART byte: 0xbb
+# [TB] Sending UART byte: 0xcc
+# [TB] Sending UART byte: 0xdd
+# [TB] 2000010 HEARTBEAT: tick=100000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0xee
+# [TB] Sending UART byte: 0xff
+# [TB] Sending UART byte: 0x08
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x45
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x38
+# [TB] Sending UART byte: 0x12
+# [TB] Sending UART byte: 0x34
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] 3000010 HEARTBEAT: tick=150000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x40
+# [TB] Sending UART byte: 0x06
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0xc0
+# [TB] Sending UART byte: 0xa8
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0xc0
+# [TB] Sending UART byte: 0xa8
+# [TB] Sending UART byte: 0x01
+# [TB] 4000010 HEARTBEAT: tick=200000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x02
+# [TB] Sending UART byte: 0x30
+# [TB] Sending UART byte: 0x39
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x50
+# [TB] Sending UART byte: 0x12
+# [TB] Sending UART byte: 0x34
+# [TB] Sending UART byte: 0x56
+# [TB] Sending UART byte: 0x78
+# [TB] Sending UART byte: 0x87
+# [TB] Sending UART byte: 0x65
+# [TB] Sending UART byte: 0x43
+# [TB] 5000010 HEARTBEAT: tick=250000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x21
+# [TB] Sending UART byte: 0x50
+# [TB] Sending UART byte: 0x18
+# [TB] Sending UART byte: 0x20
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x41
+# [TB] Sending UART byte: 0x42
+# [TB] 6000010 HEARTBEAT: tick=300000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x43
+# [TB] Sending UART byte: 0x44
+# [TB] Sending UART byte: 0x45
+# [TB] Sending UART byte: 0x46
+# [TB] Sending UART byte: 0x47
+# [TB] Sending UART byte: 0x48
+# [TB] Sending UART byte: 0x49
+# [TB] Sending UART byte: 0x4a
+# [TB] Sending UART byte: 0x4b
+# [TB] Sending UART byte: 0x4c
+# [TB] Sending UART byte: 0x4d
+# [TB] Sending UART byte: 0x4e
+# [TB] 7000010 HEARTBEAT: tick=350000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x4f
+# [TB] Sending UART byte: 0x50
+# [TB] Sending UART byte: 0xde
+# [TB] Sending UART byte: 0xad
+# [TB] Sending UART byte: 0xbe
+# [TB] Sending UART byte: 0xef
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Test 3: Send larger TCP payload
+# [TB] Sending Ethernet frame via UART: Larger data packet (payload_len=32)
+# [TB] Sending UART packet: type=0x10 len=90
+# [TB] Sending UART byte: 0x5a
+# [TB] 8000010 HEARTBEAT: tick=400000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x10
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x5a
+# [TB] Sending UART byte: 0x11
+# [TB] Sending UART byte: 0x22
+# [TB] Sending UART byte: 0x33
+# [TB] Sending UART byte: 0x44
+# [TB] Sending UART byte: 0x55
+# [TB] Sending UART byte: 0x66
+# [TB] Sending UART byte: 0xaa
+# [TB] Sending UART byte: 0xbb
+# [TB] 9000010 HEARTBEAT: tick=450000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0xcc
+# [TB] Sending UART byte: 0xdd
+# [TB] Sending UART byte: 0xee
+# [TB] Sending UART byte: 0xff
+# [TB] Sending UART byte: 0x08
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x45
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x48
+# [TB] Sending UART byte: 0x12
+# [TB] Sending UART byte: 0x34
+# [TB] 10000010 HEARTBEAT: tick=500000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x40
+# [TB] Sending UART byte: 0x06
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0xc0
+# [TB] Sending UART byte: 0xa8
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0xc0
+# [TB] 11000010 HEARTBEAT: tick=550000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0xa8
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0x02
+# [TB] Sending UART byte: 0x30
+# [TB] Sending UART byte: 0x39
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x50
+# [TB] Sending UART byte: 0x12
+# [TB] Sending UART byte: 0x34
+# [TB] Sending UART byte: 0x56
+# [TB] Sending UART byte: 0x78
+# [TB] Sending UART byte: 0x87
+# [TB] 12000010 HEARTBEAT: tick=600000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x65
+# [TB] Sending UART byte: 0x43
+# [TB] Sending UART byte: 0x21
+# [TB] Sending UART byte: 0x50
+# [TB] Sending UART byte: 0x18
+# [TB] Sending UART byte: 0x20
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] 13000010 HEARTBEAT: tick=650000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x30
+# [TB] Sending UART byte: 0x31
+# [TB] Sending UART byte: 0x32
+# [TB] Sending UART byte: 0x33
+# [TB] Sending UART byte: 0x34
+# [TB] Sending UART byte: 0x35
+# [TB] Sending UART byte: 0x36
+# [TB] Sending UART byte: 0x37
+# [TB] Sending UART byte: 0x38
+# [TB] Sending UART byte: 0x39
+# [TB] Sending UART byte: 0x30
+# [TB] Sending UART byte: 0x31
+# [TB] 14000010 HEARTBEAT: tick=700000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x32
+# [TB] Sending UART byte: 0x33
+# [TB] Sending UART byte: 0x34
+# [TB] Sending UART byte: 0x35
+# [TB] Sending UART byte: 0x36
+# [TB] Sending UART byte: 0x37
+# [TB] Sending UART byte: 0x38
+# [TB] Sending UART byte: 0x39
+# [TB] Sending UART byte: 0x30
+# [TB] Sending UART byte: 0x31
+# [TB] Sending UART byte: 0x32
+# [TB] 15000010 HEARTBEAT: tick=750000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x33
+# [TB] Sending UART byte: 0x34
+# [TB] Sending UART byte: 0x35
+# [TB] Sending UART byte: 0x36
+# [TB] Sending UART byte: 0x37
+# [TB] Sending UART byte: 0x38
+# [TB] Sending UART byte: 0x39
+# [TB] Sending UART byte: 0x30
+# [TB] Sending UART byte: 0x31
+# [TB] Sending UART byte: 0xde
+# [TB] Sending UART byte: 0xad
+# [TB] Sending UART byte: 0xbe
+# [TB] 16000010 HEARTBEAT: tick=800000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0xef
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Test 4: Send APP CLOSE command
+# [TB] Sending APP command: 0x0002
+# [TB] Sending UART packet: type=0x01 len=2
+# [TB] Sending UART byte: 0x5a
+# [TB] Sending UART byte: 0x01
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x02
+# [TB] Sending UART byte: 0x00
+# [TB] 17000010 HEARTBEAT: tick=850000 uart_tx=1 rx_buf=0 tx_buf=0 packets=0
+# [TB] Sending UART byte: 0x02
+# [TB] Sending UART byte: 0x00
+# [TB] Sending UART byte: 0x00
+# [TB] Tests completed. RX buffer: 0 bytes, TX buffer: 0 bytes
+# [TB] No UART TX data received
+# [TB] Simulation completed
+# ** Note: $finish    : uart_top_tb.sv(358)
+#    Time: 17461070 ns  Iteration: 1  Instance: /uart_top_tb
+# End time: 22:47:36 on Nov 05,2025, Elapsed time: 0:00:25
+# Errors: 0, Warnings: 0
