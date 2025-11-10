@@ -1,8 +1,6 @@
 `timescale 1ns/1ps
 // Includes from both testbenches
-`include "final_top.sv"
 `include "ethernet_info.svh"
-`include "crc32.sv"
 
 module tcp_full_tb;
 
@@ -62,7 +60,7 @@ module tcp_full_tb;
         integer i;
         begin
             if (verbose) $display("[TB->UART] %0t: Sending byte 0x%02h", $time, byte_in);
-            
+
             // Start bit
             uart_rx_pin = 1'b0;
             #(BIT_PERIOD_NS);
@@ -76,11 +74,11 @@ module tcp_full_tb;
             // Stop bit
             uart_rx_pin = 1'b1;
             #(BIT_PERIOD_NS);
-            
+
             // ADDED: Ensure at least one bit-period of idle time
             // This gives the DUT's state machine time to process the byte.
-            #(BIT_PERIOD_NS); 
-            
+            #(BIT_PERIOD_NS);
+
             if (verbose) $display("[TB->UART] %0t: Send complete 0x%02h", $time, byte_in);
         end
     endtask
@@ -107,11 +105,11 @@ module tcp_full_tb;
 
             // Wait for Stop bit
             #(BIT_PERIOD_NS);
-            
+
             $display("[UART->TB] %0t: Received byte 0x%02h", $time, byte_out);
 
             // Allow line to return to idle if necessary
-            #(HALF_BIT_PERIOD_NS); 
+            #(HALF_BIT_PERIOD_NS);
         end
     endtask
 
@@ -175,53 +173,53 @@ module tcp_full_tb;
             $display("[TB] %0t:   SRC PORT: %0d", $time, src_port);
             $display("[TB] %0t:   DST PORT: %0d", $time, dst_port);
             $display("[TB] %0t: ========================================", $time);
-            
+
             // Send src_mac (6 bytes, indices 0-5)
             for (int i = 0; i < 6; i++) begin
                 uart_send_byte(INFO);
                 uart_send_byte(i);
                 uart_send_byte(src_mac[47 - i*8 -: 8], 1); // verbose
             end
-            
+
             // Send dst_mac (6 bytes, indices 6-11)
             for (int i = 0; i < 6; i++) begin
                 uart_send_byte(INFO);
                 uart_send_byte(6 + i);
                 uart_send_byte(dst_mac[47 - i*8 -: 8], 1); // verbose
             end
-            
+
             // Send src_ip (4 bytes, indices 12-15)
             for (int i = 0; i < 4; i++) begin
                 uart_send_byte(INFO);
                 uart_send_byte(12 + i);
                 uart_send_byte(src_ip[31 - i*8 -: 8], 1); // verbose
             end
-            
+
             // Send dst_ip (4 bytes, indices 16-19)
             for (int i = 0; i < 4; i++) begin
                 uart_send_byte(INFO);
                 uart_send_byte(16 + i);
                 uart_send_byte(dst_ip[31 - i*8 -: 8], 1); // verbose
             end
-            
+
             // Send src_port (2 bytes, indices 20-21)
             uart_send_byte(INFO);
             uart_send_byte(20);
             uart_send_byte(src_port[15:8], 1); // verbose
-            
+
             uart_send_byte(INFO);
             uart_send_byte(21);
             uart_send_byte(src_port[7:0], 1); // verbose
-            
+
             // Send dst_port (2 bytes, indices 22-23)
             uart_send_byte(INFO);
             uart_send_byte(22);
             uart_send_byte(dst_port[15:8], 1); // verbose
-            
+
             uart_send_byte(INFO);
             uart_send_byte(23);
             uart_send_byte(dst_port[7:0], 1); // verbose
-            
+
             $display("[TB] %0t: Connection info sent successfully", $time);
         end
     endtask
@@ -244,18 +242,18 @@ module tcp_full_tb;
         begin
             string header_preview = "";
             int preview_len = (len < 32) ? len : 32;
-            
+
             $display("[TB] %0t: ========================================", $time);
             $display("[TB] %0t: Sending ETHERNET FRAME via UART", $time);
             $display("[TB] %0t:   Total Length: %0d bytes", $time, len);
-            
+
             for (int i = 0; i < preview_len; i++) begin
                 $sformat(header_preview, "%s %02h", header_preview, frame[i]);
             end
-            $display("[TB] %0t:   Preview (first %0d bytes):%s%s", $time, preview_len, header_preview, 
+            $display("[TB] %0t:   Preview (first %0d bytes):%s%s", $time, preview_len, header_preview,
                      (len > preview_len) ? "..." : "");
             $display("[TB] %0t: ========================================", $time);
-            
+
             for (int i = 0; i < len; i++) begin
                 uart_send_byte(ETH_FRAME_IN, 1);
                 uart_send_byte(frame[i], 0); // verbose=0 to avoid spam
@@ -435,66 +433,66 @@ module tcp_full_tb;
         automatic logic [7:0] expected_header = 8'hFF;
         automatic int frame_count = 0;
         automatic bit waiting_for_data = 0;
-        
+
         forever begin
             // This now calls the bit-banging receive task
             uart_receive_byte(rx_byte);
-            
+
             if (!waiting_for_data) begin
                 expected_header = rx_byte;
                 waiting_for_data = 1;
                 $display("[TB] %0t: Received header: 0x%02h (%s)", $time, rx_byte,
                          (rx_byte == ETH_FRAME_OUT) ? "ETH_FRAME_OUT" :
                          (rx_byte == REMAINING_LAYER) ? "REMAINING_LAYER" :
-                         (rx_byte == BRAIN_STATUS) ? "BRAIN_STATUS" : 
+                         (rx_byte == BRAIN_STATUS) ? "BRAIN_STATUS" :
                          (rx_byte == PARROT) ? "PARROT" : "UNKNOWN");
             end else begin
                 waiting_for_data = 0;
-                
+
                 case (expected_header)
                     ETH_FRAME_OUT: begin
                         eth_frame_buffer.push_back(rx_byte);
-                        
+
                         // Minimum frame: 14 (Eth) + 20 (IP) + 20 (TCP) + 4 (CRC) = 58 bytes
                         if (eth_frame_buffer.size() >= 58) begin
                             automatic byte frame_copy[];
                             frame_copy = new[eth_frame_buffer.size()];
-                            for (int i = 0; i < eth_frame_buffer.size(); i++) 
+                            for (int i = 0; i < eth_frame_buffer.size(); i++)
                                 frame_copy[i] = eth_frame_buffer[i];
-                            
+
                             $display("[TB] %0t: ========================================", $time);
                             $display("[TB] %0t: Complete Ethernet frame received (#%0d)", $time, frame_count);
                             $display("[TB] %0t:   Frame size: %0d bytes", $time, eth_frame_buffer.size());
                             $display("[TB] %0t: ========================================", $time);
-                            
+
                             fork
                                 process_phy_frame(frame_copy, frame_count);
                             join_none
-                            
+
                             frame_count++;
                             eth_frame_buffer.delete();
                         end
                     end
-                    
+
                     REMAINING_LAYER: begin
                         app_data_buffer.push_back(rx_byte);
                         rx_buffer.push_back(rx_byte);
-                        
+
                         if (rx_buffer.size() == 1) begin
                             $display("[TB] %0t: Received first application data byte", $time);
                         end else if (rx_buffer.size() % 256 == 0) begin
                             $display("[TB] %0t: Received %0d application bytes so far", $time, rx_buffer.size());
                         end
                     end
-                    
+
                     BRAIN_STATUS: begin
                         $display("[TB] %0t: BRAIN_STATUS data: 0x%02h", $time, rx_byte);
                     end
-                    
+
                     PARROT: begin
                         $display("[TB] %0t: PARROT echo: 0x%02h", $time, rx_byte);
                     end
-                    
+
                     default: begin
                         $display("[TB] %0t: WARNING: Data byte for unknown header 0x%02h", $time, expected_header);
                     end
@@ -523,16 +521,16 @@ module tcp_full_tb;
         begin
             $display("[TB] %0t: ----------------------------------------", $time);
             $display("[TB] %0t: Processing received frame #%0d (%0d bytes)", $time, frame_num, frame.size());
-            
+
             if (frame.size() < `ETH_HEADER_BYTES + `IPV4_HEADER_MIN_BYTES) begin
                 $display("[TB] %0t: ERROR: Frame too small (%0d bytes)", $time, frame.size());
                 return;
             end
-            
+
             dst_mac = {frame[0], frame[1], frame[2], frame[3], frame[4], frame[5]};
             src_mac = {frame[6], frame[7], frame[8], frame[9], frame[10], frame[11]};
             $display("[TB] %0t:   Ethernet: SRC=%012h DST=%012h", $time, src_mac, dst_mac);
-            
+
             ip_off = `ETH_HEADER_BYTES;
             ihl = frame[ip_off + `IPV4_VERSION_IHL_OFFSET] & 8'h0F;
             if (ihl < 5) ihl = 5;
@@ -541,23 +539,23 @@ module tcp_full_tb;
                 $display("[TB] %0t: ERROR: TCP header truncated", $time);
                 return;
             end
-            
+
             src_ip = read_u32(frame, ip_off + `IPV4_SRC_IP_OFFSET);
             dst_ip = read_u32(frame, ip_off + `IPV4_DST_IP_OFFSET);
             $display("[TB] %0t:   IPv4: SRC=%08h DST=%08h", $time, src_ip, dst_ip);
-            
+
             src_port = read_u16(frame, tcp_off + `TCP_SRC_PORT_BASE);
             dst_port = read_u16(frame, tcp_off + `TCP_DST_PORT_BASE);
             seq_num = read_u32(frame, tcp_off + `TCP_SEQ_NUM_BASE);
             ack_num = read_u32(frame, tcp_off + `TCP_ACK_NUM_BASE);
             flags_byte = frame[tcp_off + `TCP_FLAGS_BASE];
-            
+
             if (flags_byte & (1 << `TCP_FLAG_SYN)) flags_str = {flags_str, "SYN "};
             if (flags_byte & (1 << `TCP_FLAG_ACK)) flags_str = {flags_str, "ACK "};
             if (flags_byte & (1 << `TCP_FLAG_FIN)) flags_str = {flags_str, "FIN "};
             if (flags_byte & (1 << `TCP_FLAG_RST)) flags_str = {flags_str, "RST "};
             if (flags_byte & (1 << `TCP_FLAG_PSH)) flags_str = {flags_str, "PSH "};
-            
+
             $display("[TB] %0t:   TCP: SRC_PORT=%0d DST_PORT=%0d", $time, src_port, dst_port);
             $display("[TB] %0t:   TCP: SEQ=%08h ACK=%08h FLAGS=%s", $time, seq_num, ack_num, flags_str);
 
@@ -582,7 +580,7 @@ module tcp_full_tb;
                     {}, 0, seg, sl, pseudo_sum
                 );
 
-                build_eth_ipv4_tcp_frame(seg, sl, dst_mac, src_mac, dst_ip, src_ip, 
+                build_eth_ipv4_tcp_frame(seg, sl, dst_mac, src_mac, dst_ip, src_ip,
                                          resp_frame, resp_len);
                 $display("[TB] %0t: Sending SYN-ACK via UART (%0d bytes)...", $time, resp_len);
                 // This now calls the bit-banging send task
@@ -652,7 +650,7 @@ module tcp_full_tb;
         uart_send_instruction(1); // CMD_CONNECT
 
         $display("[TB] Waiting for handshake to complete...");
-        
+
         // Wait for handshake
         begin
             int wait_cycles = 0;
@@ -730,7 +728,7 @@ module tcp_full_tb;
 
         // Validate
         $display("[TB] --- Test Complete ---");
-        $display("[TB] Final DUT ACK: %0h (expected: %0h)", 
+        $display("[TB] Final DUT ACK: %0h (expected: %0h)",
                  dut_ack_num, base_seq + message_len);
 
         $stop(0);

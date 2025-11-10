@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
-`include "tcp_top.sv"
-`include "uart_tcp_mux.sv"
+// `include "tcp_top.sv"
+// `include "uart_tcp_mux.sv"
 
 module uart_top #(
     parameter int DATA_WIDTH = 8,

@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
-`include "ethernet_info.svh"   
-`include "tcp_handler.sv"
+`include "ethernet_info.svh"
 
 `define NUM_PACKETS 10
 
@@ -172,7 +170,7 @@ module tcp_handler_tb;
             sum = 0;
             for (int i = p; i < p + total_bytes; i += 2) begin
                 int unsigned word;
-                
+
                 if (i + 1 < p + total_bytes) begin
                     // Normal 16-bit word
                     word = {bytes[i], bytes[i+1]};
@@ -180,7 +178,7 @@ module tcp_handler_tb;
                     // Last byte, pad low byte with 0
                     word = {bytes[i], 8'h00};
                 end
-                
+
                 sum += word;
                 sum = (sum & 16'hFFFF) + (sum >> 16); // 1's complement folding
             end
@@ -251,7 +249,7 @@ module tcp_handler_tb;
             automatic int timeout = 1000;
             automatic int waited = 0;
             automatic bit meta_ok = 1;
-            
+
             // clear capture buffer
             rx_buffer = {};
             expected_payload = {};
@@ -259,7 +257,7 @@ module tcp_handler_tb;
 
             // send a randomized packet and obtain expected metadata & payload
             send_packet(exp_src_port, exp_dst_port, exp_seq_num, exp_ack_num, exp_flags, exp_window, exp_hdr_chk);
-            
+
             repeat(100) @(posedge clk);
 
             if (!meta_valid) begin
@@ -319,7 +317,7 @@ module tcp_handler_tb;
             meta_ready = 1;
             @(posedge clk);
             meta_ready = 0;
-            
+
             repeat (5) @(posedge clk);
         end
 

@@ -1,5 +1,5 @@
 // uart_tcp_mux.sv
-`include "axi_stream_if.sv"
+// `include "axi_stream_if.sv"
 `include "ethernet_info.svh"
 
 module uart_tcp_mux #(
@@ -30,17 +30,17 @@ module uart_tcp_mux #(
     // AXI4-Stream master (to App - notifications / responses)
     axi_stream_if.slave  app_response_axis
 );
-  
+
   // Internal parameterized interfaces to ensure width consistency
   axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) uart_in_internal();
   axi_stream_if #(.DATA_WIDTH(DATA_WIDTH)) uart_out_internal();
-  
+
   // Connect external interfaces to internal parameterized ones
   assign uart_in_internal.tdata = uart_in.tdata;
   assign uart_in_internal.tvalid = uart_in.tvalid;
   assign uart_in_internal.tlast = uart_in.tlast;
   assign uart_in.tready = uart_in_internal.tready;
-  
+
   assign uart_out.tdata = uart_out_internal.tdata;
   assign uart_out.tvalid = uart_out_internal.tvalid;
   assign uart_out.tlast = uart_out_internal.tlast;

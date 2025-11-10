@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
-`include "tcp_reorder_buffer.sv"
 
 `define NUM_FRAMES 10
 `define BUF_DEPTH  1024

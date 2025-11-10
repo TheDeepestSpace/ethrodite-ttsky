@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
-`include "ethernet_ipv4_handler.sv"
 
 `define ETH_TYPE_IPV4 16'h0800
 `define NUM_PACKETS 10
@@ -203,7 +201,7 @@ module ethernet_ipv4_handler_tb;
             bytes[i] = $urandom;
             expected_payload.push_back(bytes[i]);
         end
-        
+
         exp_crc32 = 32'hFFFFFFFF;
         for (i=`ETH_HEADER_BYTES; i<`ETH_HEADER_BYTES + ipv4_total_len; i++) begin
             exp_crc32 = crc(exp_crc32, bytes[i]);
@@ -259,7 +257,7 @@ module ethernet_ipv4_handler_tb;
             repeat(100) @(posedge clk);
 
             expected_checksum_ok = valid_pkt;
-            
+
             if(expected_payload.size() != rx_buffer.size())
             begin
                 payload_pass = 0;
@@ -297,7 +295,7 @@ module ethernet_ipv4_handler_tb;
                         meta_checksum_ok, meta_ethertype_ok, meta_length_ok,
                         meta_dst_mac, meta_src_mac, meta_src_ip, meta_dst_ip, meta_protocol, meta_total_length, meta_crc32, meta_pseudo_header);
             end
-            
+
             //acknowledge the data
             meta_ready <= 1;
             while(meta_valid) @(posedge clk);

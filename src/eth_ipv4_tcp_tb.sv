@@ -1,5 +1,4 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
 `include "helper.c"
 
 module eth_ipv4_tcp_tb;

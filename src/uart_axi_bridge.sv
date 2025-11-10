@@ -1,6 +1,6 @@
 // uart_axi_bridge.sv
-`include "axi_stream_if.sv"
-`include "UART_wrapper.sv"
+// `include "axi_stream_if.sv"
+// `include "UART_wrapper.sv"
 
 module uart_axi_bridge #(
     parameter int DATA_WIDTH = 8,

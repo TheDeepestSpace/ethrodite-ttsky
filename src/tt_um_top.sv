@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
-`include "uart_axi_bridge.sv"
-`include "uart_top.sv"
+// `include "uart_axi_bridge.sv"
+// `include "uart_top.sv"
 
 module tt_um_top (
     input  wire [7:0] ui_in,    // Dedicated inputs

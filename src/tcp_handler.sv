@@ -1,5 +1,4 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
 
 module tcp_handler #(
@@ -16,7 +15,7 @@ module tcp_handler #(
 
     // Metadata outputs
     output logic       meta_valid,
-    input  logic       meta_ready, 
+    input  logic       meta_ready,
     output logic [15:0] meta_src_port,
     output logic [15:0] meta_dst_port,
     output logic [31:0] meta_seq_num,
@@ -124,7 +123,7 @@ module tcp_handler #(
                         state_n = S_WAIT;
                         m_axis_last_n = 1;
                     end
-                    
+
                 end
             endcase
         end

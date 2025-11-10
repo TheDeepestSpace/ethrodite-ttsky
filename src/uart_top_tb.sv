@@ -1,9 +1,9 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
+// `include "axi_stream_if.sv"
 `include "ethernet_info.svh"
-`include "uart_core.sv"
-`include "uart_tcp_mux.sv"
-`include "tcp_top.sv"
+// `include "uart_core.sv"
+// `include "uart_tcp_mux.sv"
+// `include "tcp_top.sv"
 
 module uart_top_tb;
 

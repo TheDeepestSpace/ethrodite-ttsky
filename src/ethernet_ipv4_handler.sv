@@ -1,7 +1,5 @@
 `timescale 1ns/1ps
-`include "axi_stream_if.sv"
 `include "ethernet_info.svh"
-`include "crc32.sv"
 
 module ethernet_ipv4_handler #(
     parameter int DATA_WIDTH  = `INPUTWIDTH
