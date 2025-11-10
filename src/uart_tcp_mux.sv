@@ -102,23 +102,21 @@ module uart_tcp_mux #(
   logic uart_rx_valid, uart_tx_valid;
   logic uart_rx_ready, uart_tx_ready;
 
-  typedef enum logic [3:0] {
-    S_POLL_UART,
-    S_SEND_TO_BRAIN,
-    S_SEND_TO_ETH,
-    S_SEND_TO_TCP_SENDER,
-    S_LOAD_INFO,
-
-    S_SEND_TO_UART,
-    S_POLL_TCP_OUTPUT,   //layers under tcp
-    S_POLL_FRAMES_OUT,
-    S_POLL_BRAIN_STATUS, // full frames being sent to server
-
-    S_GET_DATA,    // because for out_info, we first get address, then get the actual data to load
-    S_GET_BYTE,    // general purpose state to load state into reg
-    S_SEND_HEADER
-  } state_e;
-  state_e state_r, state_n;
+  // State machine states (using localparam instead of enum for Yosys compatibility)
+  localparam logic [3:0] S_POLL_UART         = 4'd0;
+  localparam logic [3:0] S_SEND_TO_BRAIN     = 4'd1;
+  localparam logic [3:0] S_SEND_TO_ETH       = 4'd2;
+  localparam logic [3:0] S_SEND_TO_TCP_SENDER = 4'd3;
+  localparam logic [3:0] S_LOAD_INFO         = 4'd4;
+  localparam logic [3:0] S_SEND_TO_UART      = 4'd5;
+  localparam logic [3:0] S_POLL_TCP_OUTPUT   = 4'd6;
+  localparam logic [3:0] S_POLL_FRAMES_OUT   = 4'd7;
+  localparam logic [3:0] S_POLL_BRAIN_STATUS = 4'd8;
+  localparam logic [3:0] S_GET_DATA          = 4'd9;
+  localparam logic [3:0] S_GET_BYTE          = 4'd10;
+  localparam logic [3:0] S_SEND_HEADER       = 4'd11;
+  
+  logic [3:0] state_r, state_n;
 
   always_comb begin
     //all same data for UART --> REST OF CHIP
