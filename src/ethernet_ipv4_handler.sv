@@ -245,7 +245,31 @@ module ethernet_ipv4_handler #(
     // -----------------------------------------------------------------
     // Sequential updates
     always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n || (state_r == S_WAIT && meta_ready)) begin
+    if (!rst_n) begin
+            // Reset all state and metadata
+            state_r             <= S_HEADER;
+            byte_offset_r       <= 0;
+            dst_mac_r           <= 0; src_mac_r <= 0;
+            ethertype_r         <= 0; ethertype_ok_r <= 0;
+            ipv4_version_r      <= 0; ipv4_ihl_r <= 0;
+            ipv4_total_length_r <= 0; ipv4_protocol_r <= 0;
+            ipv4_src_ip_r       <= 0; ipv4_dst_ip_r <= 0;
+            odd_byte_valid_r <= 0; odd_byte_r <= 0;
+            header_bytes_needed_r <= 0; header_bytes_accum_r <= 0;
+            forwarded_bytes_r   <= 0;
+
+            chksum_acc_r <= '0;
+
+            meta_valid          <= 0;
+            meta_dst_mac        <= 0; meta_src_mac <= 0;
+            meta_src_ip         <= 0; meta_dst_ip <= 0;
+            meta_protocol       <= 0; meta_total_length <= 0;
+            meta_ethertype_ok <= 0;
+
+            // clear registered outputs
+            m_axis_tlast_r <= 1'b0; m_axis_tdata_r <= '0;
+        end
+        else if (state_r == S_WAIT && meta_ready) begin
             // Reset all state and metadata
             state_r             <= S_HEADER;
             byte_offset_r       <= 0;

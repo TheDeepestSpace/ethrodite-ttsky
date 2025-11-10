@@ -142,7 +142,7 @@ module tcp_handler #(
     // -----------------------------------------------------------------
     // Sequential updates
     always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n || state_r == S_WAIT && meta_ready) begin
+        if (!rst_n) begin
             state_r <= S_HEADER;
             byte_offset_r <= 0;
             dst_port_r <= 0;
@@ -167,6 +167,31 @@ module tcp_handler #(
 
             // Also clear meta registers if needed
             meta_valid <= 0;
+        end else if (state_r == S_WAIT && meta_ready) begin
+            state_r <= S_HEADER;
+            byte_offset_r <= 0;
+            dst_port_r <= 0;
+            src_port_r <= 0;
+            header_length_r <= 0;
+            seq_num_r <= 0;
+            ack_num_r <= 0;
+            flags_r <= 0;
+            window_size_r <= 0;
+            odd_byte_valid_r <= 0;
+            odd_byte_r <= 0;
+            header_bytes_needed_r <= 0;
+            header_bytes_accum_r <= 0;
+            forwarded_bytes_r <= 0;
+            urgent_r <= 0;
+            meta_dst_port <= 0;
+            meta_src_port <= 0;
+            meta_ack_num <= 0;
+            meta_flags <= 0;
+            meta_payload_len <= 0;
+            meta_window_size <= 0;
+
+            // Also clear meta registers if needed
+            meta_valid <= 0;            
         end else begin
             // Latch state
             state_r             <= state_n;
