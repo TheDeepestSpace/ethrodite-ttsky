@@ -1,7 +1,6 @@
 `timescale 1ns/1ps
 `include "axi_stream_if.sv"
 `include "ethernet_info.svh"
-`include "tcp_sender.sv"
 
 `define NUM_PACKETS 10
 
@@ -186,7 +185,7 @@ module tcp_sender_tb;
                 else
                     payload_sum += {t_payload_bytes[i], t_payload_bytes[i+1]};
             end
-            
+
             sum += payload_sum;
 
             while (sum >> 16)
@@ -261,7 +260,7 @@ module tcp_sender_tb;
             rx_buffer = {};
             for (int i=0; i<tb_payload_len; i++)
                 tb_payload[i] = i[7:0];
-            
+
 
             payload_checksum = 0;
             for (int i = 0; i < tb_payload_len; i += 2) begin
@@ -271,9 +270,9 @@ module tcp_sender_tb;
                 else
                     payload_checksum += {tb_payload[i], tb_payload[i+1]};
             end
-            
+
             while (payload_checksum >> 16)
-                payload_checksum = (payload_checksum & 16'hFFFF) + (payload_checksum >> 16);            
+                payload_checksum = (payload_checksum & 16'hFFFF) + (payload_checksum >> 16);
 
             build_expected_packet(tb_src_mac, tb_dst_mac,
                                   tb_src_ip, tb_dst_ip,

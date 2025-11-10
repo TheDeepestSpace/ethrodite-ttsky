@@ -1,11 +1,6 @@
 `timescale 1ns/1ps
 `include "axi_stream_if.sv"
 `include "ethernet_info.svh"
-`include "tcp_sender.sv"
-`include "tcp_handler.sv"
-`include "tcp_brain.sv"
-`include "ethernet_ipv4_handler.sv"
-`include "tcp_reorder_buffer.sv"
 
 module tcp_top(
     input  logic clk,
